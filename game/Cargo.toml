@@ -1,0 +1,14 @@
+[package]
+name = "game"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.14"
+bevy-inspector-egui = { version = "0.25.1", optional = true }
+bevy_tweening = "0.11.0"
+rand = "0.8.5"
+tracing = "0.1.40"
+
+[features]
+debug = ["dep:bevy-inspector-egui"]
