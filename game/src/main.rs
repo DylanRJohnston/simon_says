@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 use bevy_tweening::TweeningPlugin;
-use game::{actions::ActionPlugin, level::LevelPlugin, player::PlayerPlugin, ui::UIPlugin};
+use game::{
+    actions::ActionPlugin, delayed_command::DelayedCommandPlugin, level::LevelPlugin,
+    player::PlayerPlugin, simulation::SimulationPlugin, ui::UIPlugin,
+};
 
 fn main() {
     let mut app = App::new();
@@ -11,6 +14,8 @@ fn main() {
         .add_plugins(ActionPlugin)
         .add_plugins(UIPlugin)
         .add_plugins(TweeningPlugin)
+        .add_plugins(SimulationPlugin)
+        .add_plugins(DelayedCommandPlugin)
         .insert_resource(ClearColor(Color::srgb_u8(0x33, 0x3c, 0x57)))
         .insert_resource(AmbientLight {
             brightness: 80.0,

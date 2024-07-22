@@ -3,7 +3,10 @@ use bevy::prelude::*;
 use button::ButtonPlugin;
 use constants::*;
 
-use crate::actions::{Action, AddAction};
+use crate::{
+    actions::{Action, AddAction},
+    simulation::SimulationStart,
+};
 
 pub mod action_list;
 pub mod button;
@@ -95,35 +98,16 @@ fn setup(mut commands: Commands) {
                 .with_children(|container| {
                     ActionListPlugin::spawn_ui(container);
 
-                    // button::Button::builder().text("Go!")
-
-                    container
-                        .spawn((ButtonBundle {
-                            style: Style {
-                                padding: UiRect::all(Val::Px(8.0)),
-                                height: Val::Px(64.0),
-                                width: Val::Px(128.),
-                                justify_content: JustifyContent::Center,
-                                align_items: AlignItems::Center,
-                                ..default()
-                            },
-                            border_radius: BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
-                            background_color: (*BUTTON_SUCCESS_COLOR).into(),
-                            ..default()
-                        },))
-                        .with_children(|command_container| {
-                            command_container.spawn(TextBundle {
-                                text: Text::from_section(
-                                    "Start",
-                                    TextStyle {
-                                        color: *PRIMARY_TEXT_COLOR,
-                                        font_size: 42.0,
-                                        ..default()
-                                    },
-                                ),
-                                ..default()
-                            });
-                        });
+                    button::Button::builder()
+                        .text("Start".into())
+                        .background_color(*BUTTON_SUCCESS_COLOR)
+                        .border_color(*BUTTON_SUCCESS_COLOR)
+                        .hover_background_color(*BUTTON_SUCCESS_COLOR)
+                        .hover_border_color(*PRIMARY_TEXT_COLOR)
+                        .on_click(Box::new(|commands, _entity| {
+                            commands.trigger(SimulationStart);
+                        }))
+                        .build(container);
                 });
         });
 }
