@@ -10,7 +10,7 @@ impl Plugin for ActionPlugin {
     }
 }
 
-#[derive(Debug, Clone, Copy, Event)]
+#[derive(Debug, Clone, Copy, Event, PartialEq, Eq, Hash)]
 pub enum Action {
     Forward,
     Backward,

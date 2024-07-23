@@ -1,15 +1,22 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{
+    prelude::*,
+    utils::{HashMap, HashSet},
+};
+use bevy_firework::{
+    bevy_utilitarian::prelude::{Gradient, ParamCurve, RandF32, RandValue, RandVec3},
+    core::{BlendMode, ParticleSpawnerBundle, ParticleSpawnerSettings},
+    emission_shape::EmissionShape,
+};
 use bevy_tweening::{lens::TransformPositionLens, Animator, EaseFunction, Tween};
 use std::{f32::consts::PI, sync::LazyLock, time::Duration};
 
-use crate::{
-    player::{self, Player, RespawnPlayer},
-    ui::constants::BUTTON_SUCCESS_COLOR,
-};
+use crate::{actions::Action, player::RespawnPlayer, ui::constants::BUTTON_SUCCESS_COLOR};
 
 #[derive(Debug, Clone, Resource)]
 pub struct Level {
-    tiles: HashMap<(i32, i32), Tile>,
+    pub tiles: HashMap<(i32, i32), Tile>,
+    pub actions: HashSet<Action>,
+    pub action_limit: usize,
 }
 
 impl Level {
@@ -33,6 +40,8 @@ pub static LEVELS: LazyLock<[Level; 1]> = LazyLock::new(|| {
             ((3, 0), Tile::Basic),
             ((4, 0), Tile::Finish),
         ]),
+        actions: HashSet::from([Action::Forward]),
+        action_limit: 1,
     }]
 });
 
@@ -41,11 +50,7 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup)
-            .add_systems(Update, spawn_level)
-            .add_systems(Startup, spawn_eye)
-            .add_systems(Update, eye_track_player)
-            .add_systems(Update, animate_eye)
-            .add_systems(Update, eye_boredom);
+            .add_systems(Update, spawn_level);
     }
 }
 
@@ -109,121 +114,42 @@ fn spawn_level(
     }
 
     commands.trigger(RespawnPlayer);
-}
 
-#[derive(Debug, Component, Default)]
-pub struct Eye {
-    pub target: Vec3,
-    pub boredom: Timer,
-}
-
-const IRIS_CENTER: Vec3 = Vec3::new(-0.31, -0.28, 0.0);
-
-#[derive(Debug, Component, Default)]
-pub struct Iris;
-
-fn spawn_eye(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut material: ResMut<Assets<StandardMaterial>>,
-) {
-    let quad_handle = meshes.add(Rectangle::new(8., 8.));
-
-    let eye_material = material.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("textures/eye.png")),
-        alpha_mode: AlphaMode::Blend,
-        reflectance: 0.0,
-        ..default()
-    });
-
-    let iris_material = material.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("textures/iris.png")),
-        alpha_mode: AlphaMode::Blend,
-        reflectance: 0.0,
-        ..default()
-    });
-
-    for (x, y, z) in [(3.0, 1.0, -6.0), (1.0, -6.0, -6.0), (-3.0, -1.0, -6.0)] {
-        commands
-            .spawn((
-                Eye::default(),
-                Name::new("Simon"),
-                PbrBundle {
-                    mesh: quad_handle.clone(),
-                    material: eye_material.clone(),
-                    transform: Transform::from_xyz(x, y, z),
-                    ..default()
+    commands.spawn((ParticleSpawnerBundle::from_settings(
+        ParticleSpawnerSettings {
+            one_shot: false,
+            rate: 40.0,
+            emission_shape: EmissionShape::HollowSphere {
+                inner_radius: 5.0,
+                outer_radius: 8.0,
+            },
+            lifetime: RandF32::constant(20.),
+            inherit_parent_velocity: true,
+            initial_velocity: RandVec3 {
+                magnitude: RandF32 {
+                    min: 0.08,
+                    max: 0.12,
                 },
-            ))
-            .with_children(|eye| {
-                eye.spawn((
-                    Iris,
-                    PbrBundle {
-                        mesh: quad_handle.clone(),
-                        material: iris_material.clone(),
-                        transform: Transform::from_translation(IRIS_CENTER),
-                        ..default()
-                    },
-                ));
-            });
-    }
-}
-
-fn eye_track_player(
-    players: Query<&Transform, (Changed<Transform>, With<Player>)>,
-    mut eye: Query<&mut Eye>,
-) {
-    if let Some(player) = players.iter().next() {
-        for mut eye in &mut eye {
-            eye.target = player.translation;
-            eye.boredom = Timer::from_seconds(2.5 + rand::random::<f32>() * 2.5, TimerMode::Once);
-        }
-    }
-}
-
-fn animate_eye(
-    mut eye: Query<(&mut Transform, &Eye, &Children), Without<Iris>>,
-    mut iris: Query<&mut Transform, With<Iris>>,
-    time: Res<Time>,
-) {
-    for (mut transform, eye, children) in &mut eye {
-        let mut iris = iris.get_mut(children[0]).unwrap();
-
-        let base_rotation = Quat::from_euler(EulerRot::XYZ, 0., PI, 0.);
-
-        let target = transform.looking_at(eye.target, Vec3::Y).rotation * base_rotation;
-        let difference = (transform.rotation.conjugate() * target).xyz();
-
-        iris.translation = iris.translation.lerp(
-            IRIS_CENTER + 2. * Vec3::new(-difference.y, difference.x, 0.),
-            4.0 * time.delta_seconds(),
-        );
-
-        let rotation = transform.rotation.lerp(
-            transform.looking_at(eye.target, Vec3::Y).rotation * base_rotation,
-            0.5 * time.delta_seconds(),
-        );
-
-        transform.rotation = rotation;
-    }
-}
-
-fn eye_boredom(mut eye: Query<&mut Eye>, time: Res<Time>) {
-    for mut eye in &mut eye {
-        if !eye.boredom.tick(time.delta()).just_finished() {
-            continue;
-        }
-
-        eye.target = Vec3::new(
-            rand::random::<f32>() * 10. - 5.,
-            rand::random::<f32>() * 3. - 1.5,
-            rand::random::<f32>() * 10. - 5.,
-        );
-
-        eye.boredom = Timer::new(
-            Duration::from_secs_f32(2. + rand::random::<f32>() * 3.0),
-            TimerMode::Once,
-        );
-    }
+                direction: Vec3::Y,
+                spread: 2. * PI,
+            },
+            initial_scale: RandF32 {
+                min: 0.05,
+                max: 0.05,
+            },
+            scale_curve: ParamCurve::linear(vec![(0., 0.5), (0.5, 1.0), (1.0, 0.5)]),
+            color: Gradient::linear(vec![
+                (0.0, LinearRgba::new(0., 0., 0., 0.0)),
+                (0.1, LinearRgba::new(0., 0., 0., 0.85)),
+                (0.9, LinearRgba::new(0., 0., 0., 0.85)),
+                (1.0, LinearRgba::new(0., 0., 0., 0.0)),
+            ]),
+            blend_mode: BlendMode::Multiply,
+            linear_drag: 0.1,
+            pbr: false,
+            acceleration: Vec3::ZERO,
+            fade_edge: 1.0,
+            ..default()
+        },
+    ),));
 }

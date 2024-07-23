@@ -1,8 +1,9 @@
 use bevy::prelude::*;
+use bevy_firework::plugin::ParticleSystemPlugin;
 use bevy_tweening::TweeningPlugin;
 use game::{
-    actions::ActionPlugin, delayed_command::DelayedCommandPlugin, level::LevelPlugin,
-    player::PlayerPlugin, simulation::SimulationPlugin, ui::UIPlugin,
+    actions::ActionPlugin, delayed_command::DelayedCommandPlugin, eyes::EyesPlugin,
+    level::LevelPlugin, player::PlayerPlugin, simulation::SimulationPlugin, ui::UIPlugin,
 };
 
 fn main() {
@@ -16,7 +17,10 @@ fn main() {
         .add_plugins(TweeningPlugin)
         .add_plugins(SimulationPlugin)
         .add_plugins(DelayedCommandPlugin)
-        .insert_resource(ClearColor(Color::srgb_u8(0x33, 0x3c, 0x57)))
+        .add_plugins(EyesPlugin)
+        .add_plugins(ParticleSystemPlugin)
+        // .insert_resource(ClearColor(Color::srgb_u8(0x33, 0x3c, 0x57)))
+        .insert_resource(ClearColor(Color::srgb_u8(0xdd, 0xdd, 0xdd)))
         .insert_resource(AmbientLight {
             brightness: 80.0,
             color: Color::WHITE,

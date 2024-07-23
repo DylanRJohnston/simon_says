@@ -1,16 +1,17 @@
 use action_list::ActionListPlugin;
+use action_menu::ActionMenuPlugin;
 use bevy::prelude::*;
 use button::ButtonPlugin;
 use constants::*;
+use controls::ControlsPlugin;
 
-use crate::{
-    actions::{Action, AddAction},
-    simulation::SimulationStart,
-};
+use crate::{actions::AddAction, simulation::SimulationStart};
 
 pub mod action_list;
+pub mod action_menu;
 pub mod button;
 pub mod constants;
+pub mod controls;
 
 pub struct UIPlugin;
 
@@ -18,6 +19,8 @@ impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ButtonPlugin)
             .add_plugins(ActionListPlugin)
+            .add_plugins(ActionMenuPlugin)
+            .add_plugins(ControlsPlugin)
             .add_systems(Startup, setup);
     }
 }
@@ -35,57 +38,7 @@ fn setup(mut commands: Commands) {
             ..default()
         })
         .with_children(|container| {
-            container
-                .spawn(NodeBundle {
-                    style: Style {
-                        border: UiRect::all(Val::Px(2.)),
-                        flex_direction: FlexDirection::Column,
-                        padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
-                        ..default()
-                    },
-                    border_radius: BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                    background_color: (*UI_BACKGROUND_COLOR).into(),
-                    ..default()
-                })
-                .with_children(|header| {
-                    header.spawn(TextBundle {
-                        text: Text::from_section(
-                            "Commands",
-                            TextStyle {
-                                font_size: 45.,
-                                color: *PRIMARY_TEXT_COLOR,
-                                ..default()
-                            },
-                        ),
-                        style: Style { ..default() },
-                        ..default()
-                    });
-                    header.spawn(horizontal_line());
-                    header
-                        .spawn(NodeBundle {
-                            style: Style {
-                                column_gap: Val::Px(8.),
-                                flex_direction: FlexDirection::Row,
-                                ..default()
-                            },
-                            ..default()
-                        })
-                        .with_children(|action_row| {
-                            for action in [
-                                Action::Forward,
-                                Action::Backward,
-                                Action::Left,
-                                Action::Right,
-                            ] {
-                                button::Button::builder()
-                                    .text(action.into())
-                                    .on_click(Box::new(move |commands, _| {
-                                        commands.trigger(AddAction(action))
-                                    }))
-                                    .build(action_row);
-                            }
-                        });
-                });
+            ActionMenuPlugin::spawn_ui(container);
 
             container
                 .spawn(NodeBundle {
@@ -97,17 +50,7 @@ fn setup(mut commands: Commands) {
                 })
                 .with_children(|container| {
                     ActionListPlugin::spawn_ui(container);
-
-                    button::Button::builder()
-                        .text("Start".into())
-                        .background_color(*BUTTON_SUCCESS_COLOR)
-                        .border_color(*BUTTON_SUCCESS_COLOR)
-                        .hover_background_color(*BUTTON_SUCCESS_COLOR)
-                        .hover_border_color(*PRIMARY_TEXT_COLOR)
-                        .on_click(Box::new(|commands, _entity| {
-                            commands.trigger(SimulationStart);
-                        }))
-                        .build(container);
+                    ControlsPlugin::spawn_controls(container);
                 });
         });
 }

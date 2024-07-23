@@ -635,6 +635,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_firework"
+version = "0.5.0"
+dependencies = [
+ "bevy",
+ "bevy_utilitarian",
+ "bytemuck",
+ "rand",
+ "serde",
+]
+
+[[package]]
 name = "bevy_gilrs"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1134,6 +1145,17 @@ dependencies = [
  "smallvec",
  "taffy",
  "thiserror",
+]
+
+[[package]]
+name = "bevy_utilitarian"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f0cf37b4223e2e1f26a312aebdadfda54c27ce54263ad67b3e8a857cdf2534e"
+dependencies = [
+ "bevy",
+ "rand",
+ "serde",
 ]
 
 [[package]]
@@ -1986,6 +2008,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_firework",
  "bevy_tweening",
  "rand",
  "tracing",
