@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     actions::{ActionPlan, RemoveAction},
+    game_state::GameState,
     level::Level,
 };
 
@@ -11,7 +12,10 @@ pub struct ActionListPlugin;
 
 impl Plugin for ActionListPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, update_action_list);
+        app.add_systems(
+            Update,
+            update_action_list.run_if(in_state(GameState::InGame)),
+        );
     }
 }
 

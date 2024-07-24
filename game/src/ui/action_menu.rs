@@ -9,8 +9,11 @@ pub struct ActionMenuPlugin;
 
 impl Plugin for ActionMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, update_available_actions)
-            .add_systems(Update, plan_is_full);
+        app.add_systems(
+            Update,
+            update_available_actions.run_if(in_state(GameState::InGame)),
+        )
+        .add_systems(Update, plan_is_full);
     }
 }
 

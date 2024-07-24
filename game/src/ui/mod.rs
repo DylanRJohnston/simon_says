@@ -4,14 +4,16 @@ use bevy::prelude::*;
 use button::ButtonPlugin;
 use constants::*;
 use controls::ControlsPlugin;
+use main_menu::MainMenuPlugin;
 
-use crate::{actions::AddAction, simulation::SimulationStart};
+use crate::{actions::AddAction, game_state::GameState, simulation::SimulationStart};
 
 pub mod action_list;
 pub mod action_menu;
 pub mod button;
 pub mod constants;
 pub mod controls;
+pub mod main_menu;
 
 pub struct UIPlugin;
 
@@ -21,7 +23,8 @@ impl Plugin for UIPlugin {
             .add_plugins(ActionListPlugin)
             .add_plugins(ActionMenuPlugin)
             .add_plugins(ControlsPlugin)
-            .add_systems(Startup, setup);
+            .add_plugins(MainMenuPlugin)
+            .add_systems(OnEnter(GameState::InGame), setup);
     }
 }
 
@@ -44,6 +47,7 @@ fn setup(mut commands: Commands) {
                 .spawn(NodeBundle {
                     style: Style {
                         column_gap: Val::Px(UI_CONTAINER_GAP),
+                        align_items: AlignItems::Start,
                         ..default()
                     },
                     ..default()

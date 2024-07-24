@@ -88,7 +88,6 @@ impl ButtonBuilder {
             },
             ButtonBundle {
                 style: Style {
-                    align_self: AlignSelf::FlexStart,
                     padding: UiRect::all(Val::Px(8.0)),
                     border: UiRect::all(Val::Px(BUTTON_BORDER_THICKNESS)),
                     ..default()

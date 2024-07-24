@@ -14,6 +14,7 @@ use std::{f32::consts::PI, sync::LazyLock, time::Duration};
 use crate::{
     actions::Action,
     delayed_command::DelayedCommand,
+    game_state::GameState,
     player::{LevelCompleted, RespawnPlayer},
     ui::constants::BUTTON_SUCCESS_COLOR,
 };
@@ -186,7 +187,7 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup)
-            .add_systems(Update, spawn_level)
+            .add_systems(Update, spawn_level.run_if(in_state(GameState::InGame)))
             .observe(level_completed)
             .observe(load_next_level);
     }

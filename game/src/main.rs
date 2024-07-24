@@ -5,6 +5,7 @@ use bevy_firework::plugin::ParticleSystemPlugin;
 use bevy_kira_audio::prelude::*;
 use bevy_kira_audio::{Audio, AudioPlugin};
 use bevy_tweening::TweeningPlugin;
+use game::game_state::GameStatePlugin;
 use game::music::MusicPlugin;
 use game::{
     actions::ActionPlugin, delayed_command::DelayedCommandPlugin, eyes::EyesPlugin,
@@ -22,6 +23,7 @@ fn main() {
         .add_plugins(TweeningPlugin)
         .add_plugins(SimulationPlugin)
         .add_plugins(DelayedCommandPlugin)
+        .add_plugins(GameStatePlugin)
         .add_plugins(EyesPlugin)
         .add_plugins(ParticleSystemPlugin)
         .add_plugins(MusicPlugin)

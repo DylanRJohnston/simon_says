@@ -29,6 +29,7 @@ impl ControlsPlugin {
             .on_click(Box::new(|commands, _entity| {
                 commands.trigger(SimulationStart);
             }))
+            .disabled()
             .build(container)
             .insert(PlayButton);
     }
