@@ -8,6 +8,7 @@ use bevy_kira_audio::prelude::*;
 
 use crate::{
     delayed_command::DelayedCommand,
+    game_state::{GameState, MusicAssets, SoundAssets},
     player::{LevelCompleted, PlayerMove},
 };
 
@@ -16,7 +17,15 @@ pub struct MusicPlugin;
 impl Plugin for MusicPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(AudioPlugin)
-            .add_systems(Update, play_music)
+            .add_systems(
+                Update,
+                play_music.run_if(|state: Option<Res<State<GameState>>>| {
+                    !matches!(
+                        state.as_ref().map(|state| state.get()),
+                        Some(GameState::Loading)
+                    )
+                }),
+            )
             .observe(level_completed)
             .observe(suppress_music)
             .observe(set_music_volume)
@@ -31,7 +40,7 @@ const DEFAULT_MUSIC_VOLUME: f64 = 0.8;
 
 fn play_music(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    music: Res<MusicAssets>,
     audio: Res<Audio>,
     mut timer: Local<Timer>,
     time: Res<Time>,
@@ -43,7 +52,7 @@ fn play_music(
     *timer = Timer::from_seconds(120., TimerMode::Once);
 
     let handle = audio
-        .play(asset_server.load("music/where_am_i.ogg"))
+        .play(music.where_am_i.clone())
         .with_volume(DEFAULT_MUSIC_VOLUME)
         .fade_in(AudioTween::new(
             Duration::from_secs_f32(10.),
@@ -76,10 +85,10 @@ impl DerefMut for Music<'_> {
 fn level_completed(
     _trigger: Trigger<LevelCompleted>,
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    music: Res<MusicAssets>,
     audio: Res<Audio>,
 ) {
-    let handle = asset_server.load("music/level_completed.ogg");
+    let handle = music.level_completed.clone();
     audio.play(handle).with_volume(DEFAULT_MUSIC_VOLUME);
 
     commands.trigger(SuppressMusicVolume {
@@ -133,8 +142,8 @@ fn set_music_volume(trigger: Trigger<SetMusicVolume>, mut music: Music) {
     music.set_volume(event.volume, AudioTween::new(event.duration, event.easing));
 }
 
-fn player_move(_trigger: Trigger<PlayerMove>, asset_server: Res<AssetServer>, audio: Res<Audio>) {
-    let handle = asset_server.load("sounds/move.ogg");
+fn player_move(_trigger: Trigger<PlayerMove>, sounds: Res<SoundAssets>, audio: Res<Audio>) {
+    let handle = sounds.player_move.clone();
     audio
         .play(handle)
         .with_volume(0.4)

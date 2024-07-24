@@ -2,13 +2,16 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use crate::player::Player;
+use crate::{
+    game_state::{GameState, TextureAssets},
+    player::Player,
+};
 
 pub struct EyesPlugin;
 
 impl Plugin for EyesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_eye)
+        app.add_systems(OnEnter(GameState::MainMenu), spawn_eye)
             .add_systems(Update, eye_track_player)
             .add_systems(Update, animate_eye_direction)
             .add_systems(Update, eye_emotion)
@@ -108,28 +111,28 @@ pub struct Eye {
     pub target: Vec3,
 }
 
-const IRIS_CENTER: Vec3 = Vec3::new(-0.31, -0.28, 0.0);
+const IRIS_CENTER: Vec3 = Vec3::new(-0.31, -0.28, 0.1);
 
 #[derive(Debug, Component, Default)]
 pub struct Iris;
 
 fn spawn_eye(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    textures: Res<TextureAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut material: ResMut<Assets<StandardMaterial>>,
 ) {
     let quad_handle = meshes.add(Rectangle::new(8., 8.));
 
     let eye_material = material.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("textures/eye.png")),
+        base_color_texture: Some(textures.eye.clone()),
         alpha_mode: AlphaMode::Blend,
-        reflectance: 0.0,
+        unlit: true,
         ..default()
     });
 
     let iris_material = material.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("textures/iris.png")),
+        base_color_texture: Some(textures.iris.clone()),
         alpha_mode: AlphaMode::Blend,
         reflectance: 0.0,
         ..default()
@@ -192,6 +195,9 @@ fn animate_eye_direction(
             IRIS_CENTER + 2. * Vec3::new(-difference.y, difference.x, 0.),
             4.0 * time.delta_seconds(),
         );
+
+        iris.translation.x *= transform.scale.x;
+        iris.translation.y *= transform.scale.y;
 
         if !matches!(emotion, Emotion::Neutral(_)) {
             let rotation = transform.rotation.lerp(

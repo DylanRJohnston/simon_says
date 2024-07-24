@@ -6,7 +6,7 @@ pub struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
+        app.add_systems(OnEnter(GameState::MainMenu), setup)
             .observe(start_game)
             .add_systems(OnExit(GameState::MainMenu), destroy);
     }

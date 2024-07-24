@@ -9,6 +9,7 @@ use bevy_tweening::{
 use crate::{
     actions::Action,
     delayed_command::DelayedCommand,
+    game_state::ModelAssets,
     level::{Level, Tile},
     simulation::SimulationStop,
 };
@@ -17,37 +18,13 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
-            .observe(respawn_player)
+        app.observe(respawn_player)
             .observe(attempt_action)
             .observe(player_death)
             .observe(level_completed)
             .observe(animate_player_movement)
             .add_systems(Update, debug_keyboard_move_forward);
     }
-}
-
-#[derive(Debug, Resource, Deref)]
-pub struct PlayerMesh(Handle<Scene>);
-
-#[derive(Debug, Resource, Deref)]
-pub struct PlayerMaterial(Handle<StandardMaterial>);
-
-fn setup(
-    mut commands: Commands,
-    // mut meshes: ResMut<Assets<Mesh>>,
-    // mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
-    // let mesh = meshes.add(Capsule3d::new(0.3, 0.95 / 2.0));
-    // commands.insert_resource(PlayerMesh(mesh));
-
-    // let material = materials.add(Color::srgb_u8(0xff, 0xcd, 0x75));
-    // commands.insert_resource(PlayerMaterial(material));
-
-    commands.insert_resource(PlayerMesh(
-        asset_server.load("models/Animated Human.glb#Scene0"),
-    ));
 }
 
 #[derive(Debug, Component, Default, Clone, Copy)]
@@ -82,7 +59,7 @@ const PLAYER_Y_OFFSET: f32 = 0.5;
 
 pub fn respawn_player(
     _event: Trigger<RespawnPlayer>,
-    mesh: Res<PlayerMesh>,
+    mesh: Res<ModelAssets>,
     // material: Res<PlayerMaterial>,
     players: Query<Entity, With<Player>>,
     level: Res<Level>,
@@ -103,7 +80,7 @@ pub fn respawn_player(
     commands.spawn((
         Player { position: *start },
         SceneBundle {
-            scene: mesh.clone(),
+            scene: mesh.player.clone(),
             transform: Transform {
                 translation: position + Vec3::Y * 10.0,
                 rotation: Quat::from_rotation_y(PI / 2.),

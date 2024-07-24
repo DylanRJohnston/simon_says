@@ -2,8 +2,9 @@ use bevy::prelude::*;
 
 use crate::{
     actions::{ActionPlan, RemoveAction},
-    game_state::GameState,
+    game_state::{GameState, IconAssets},
     level::Level,
+    simulation::{self, SimulationState},
 };
 
 use super::{button, constants::*, horizontal_line};
@@ -46,11 +47,12 @@ impl ActionListPlugin {
 fn update_action_list(
     mut commands: Commands,
     action_plan: Res<ActionPlan>,
-    query: Query<Entity, With<ActionPlanUI>>,
     level: Res<Level>,
-    asset_server: Res<AssetServer>,
+    simulation_state: Res<State<SimulationState>>,
+    query: Query<Entity, With<ActionPlanUI>>,
+    icons: Res<IconAssets>,
 ) {
-    if !(action_plan.is_changed() || level.is_changed()) {
+    if !(action_plan.is_changed() || level.is_changed() || simulation_state.is_changed()) {
         return;
     }
 
@@ -79,10 +81,9 @@ fn update_action_list(
                 },
                 text: Text::from_section(
                     format!(
-                        "{count}/{max} command{plural}",
-                        count = action_plan.len(),
+                        "max {max} command{plural}",
                         max = level.action_limit,
-                        plural = if action_plan.len() == 1 { "" } else { "s" }
+                        plural = if level.action_limit == 1 { "" } else { "s" }
                     ),
                     TextStyle {
                         color: *PRIMARY_TEXT_COLOR,
@@ -147,8 +148,12 @@ fn update_action_list(
                             ..default()
                         });
 
+                        if simulation_state.get() == &SimulationState::Running {
+                            return;
+                        }
+
                         button::Button::builder()
-                            .icon(asset_server.load("icons/remove.png"))
+                            .icon(icons.remove.clone())
                             .on_click(Box::new(move |commands, _| {
                                 commands.trigger(RemoveAction(index))
                             }))

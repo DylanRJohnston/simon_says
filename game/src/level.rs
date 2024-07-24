@@ -111,22 +111,22 @@ impl Default for LevelBuilder {
 pub static LEVELS: LazyLock<[Level; 7]> = LazyLock::new(|| {
     [
         LevelBuilder::new()
-            .action_limit(3)
+            .action_limit(1)
             .actions([Action::Forward])
             .block((-2, 0), (2, 0), Tile::Basic)
             .insert([((-2, 0), Tile::Start), ((2, 0), Tile::Finish)])
             .build(),
         LevelBuilder::new()
-            .action_limit(3)
+            .action_limit(2)
             .actions([Action::Forward, Action::Right])
-            .block((-1, -1), (1, 1), Tile::Basic)
-            .insert([((-1, -1), Tile::Start), ((1, 1), Tile::Finish)])
+            .block((-2, -2), (2, 2), Tile::Basic)
+            .insert([((-2, -2), Tile::Start), ((2, 2), Tile::Finish)])
             .build(),
         LevelBuilder::new()
-            .action_limit(3)
-            .block((-1, -1), (1, 1), Tile::Basic)
-            .insert([((-1, 1), Tile::Start), ((1, -1), Tile::Finish)])
-            .remove([(1, 0)])
+            .action_limit(2)
+            .block((-2, -2), (2, 2), Tile::Basic)
+            .insert([((-2, 2), Tile::Start), ((2, -2), Tile::Finish)])
+            .remove([(2, -1)])
             .build(),
         LevelBuilder::new()
             .action_limit(3)
@@ -223,43 +223,48 @@ fn setup(
 
     commands.insert_resource(LEVELS[0].clone());
 
-    commands.spawn((ParticleSpawnerBundle::from_settings(
-        ParticleSpawnerSettings {
-            one_shot: false,
-            rate: 40.0,
-            emission_shape: EmissionShape::HollowSphere {
-                inner_radius: 5.0,
-                outer_radius: 8.0,
-            },
-            lifetime: RandF32::constant(20.),
-            inherit_parent_velocity: true,
-            initial_velocity: RandVec3 {
-                magnitude: RandF32 {
-                    min: 0.08,
-                    max: 0.12,
-                },
-                direction: Vec3::Y,
-                spread: 2. * PI,
-            },
-            initial_scale: RandF32 {
-                min: 0.05,
-                max: 0.05,
-            },
-            scale_curve: ParamCurve::linear(vec![(0., 0.5), (0.5, 1.0), (1.0, 0.5)]),
-            color: Gradient::linear(vec![
-                (0.0, LinearRgba::new(0., 0., 0., 0.0)),
-                (0.1, LinearRgba::new(0., 0., 0., 0.85)),
-                (0.9, LinearRgba::new(0., 0., 0., 0.85)),
-                (1.0, LinearRgba::new(0., 0., 0., 0.0)),
-            ]),
-            blend_mode: BlendMode::Multiply,
-            linear_drag: 0.1,
-            pbr: false,
-            acceleration: Vec3::ZERO,
-            fade_edge: 1.0,
-            ..default()
+    let mut settings = ParticleSpawnerSettings {
+        one_shot: false,
+        rate: 80.0,
+        emission_shape: EmissionShape::HollowSphere {
+            inner_radius: 5.0,
+            outer_radius: 8.0,
         },
-    ),));
+        lifetime: RandF32::constant(20.),
+        inherit_parent_velocity: true,
+        initial_velocity: RandVec3 {
+            magnitude: RandF32 {
+                min: 0.08,
+                max: 0.12,
+            },
+            direction: Vec3::Y,
+            spread: 2. * PI,
+        },
+        initial_scale: RandF32 {
+            min: 0.05,
+            max: 0.05,
+        },
+        scale_curve: ParamCurve::linear(vec![(0., 0.5), (0.5, 1.0), (1.0, 0.5)]),
+        color: Gradient::linear(vec![
+            (0.0, LinearRgba::new(0., 0., 0., 0.0)),
+            (0.1, LinearRgba::new(0., 0., 0., 0.85)),
+            (0.9, LinearRgba::new(0., 0., 0., 0.85)),
+            (1.0, LinearRgba::new(0., 0., 0., 0.0)),
+        ]),
+        blend_mode: BlendMode::Multiply,
+        linear_drag: 0.1,
+        pbr: false,
+        acceleration: Vec3::ZERO,
+        fade_edge: 1.0,
+        ..default()
+    };
+
+    commands.spawn(ParticleSpawnerBundle::from_settings(settings.clone()));
+
+    settings.one_shot = true;
+    settings.rate = 800.0;
+    settings.lifetime = RandF32 { min: 0., max: 10. };
+    commands.spawn(ParticleSpawnerBundle::from_settings(settings));
 }
 
 #[derive(Component)]
