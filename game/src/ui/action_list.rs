@@ -4,7 +4,7 @@ use crate::{
     actions::{ActionPlan, RemoveAction},
     game_state::{GameState, IconAssets},
     level::Level,
-    simulation::{self, SimulationState},
+    simulation::{SimulationState},
 };
 
 use super::{button, constants::*, horizontal_line};

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     actions::ActionPlan,
-    simulation::{self, SimulationState},
+    simulation::{SimulationState},
 };
 
 use super::*;

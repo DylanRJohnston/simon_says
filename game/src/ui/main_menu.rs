@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::delayed_command::DelayedCommand;
+
 use super::*;
 
 pub struct MainMenuPlugin;
@@ -19,28 +21,30 @@ pub struct MainMenuRoot;
 pub struct StartGame;
 
 fn setup(mut commands: Commands) {
-    commands
-        .spawn((
-            MainMenuRoot,
-            NodeBundle {
-                style: Style {
-                    height: Val::Percent(100.0),
-                    width: Val::Percent(100.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
+    commands.spawn(DelayedCommand::new(0.5, |commands| {
+        commands
+            .spawn((
+                MainMenuRoot,
+                NodeBundle {
+                    style: Style {
+                        height: Val::Percent(100.0),
+                        width: Val::Percent(100.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
                     ..default()
                 },
-                ..default()
-            },
-        ))
-        .with_children(|container| {
-            button::Button::builder()
-                .text("Begin".into())
-                .on_click(Box::new(|commands, _| {
-                    commands.trigger(StartGame);
-                }))
-                .build(container);
-        });
+            ))
+            .with_children(|container| {
+                button::Button::builder()
+                    .text("Begin".into())
+                    .on_click(Box::new(|commands, _| {
+                        commands.trigger(StartGame);
+                    }))
+                    .build(container);
+            });
+    }));
 }
 
 fn destroy(mut commands: Commands, query: Query<Entity, With<MainMenuRoot>>) {

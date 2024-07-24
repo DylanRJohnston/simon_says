@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, time::Duration};
 
-use bevy::prelude::*;
+use bevy::{prelude::*, render::view::NoFrustumCulling};
 use bevy_tweening::{
     lens::{TransformPositionLens, TransformRotationLens},
     Animator, EaseFunction, Sequence, Tracks, Tween, Tweenable,
@@ -9,7 +9,7 @@ use bevy_tweening::{
 use crate::{
     actions::Action,
     delayed_command::DelayedCommand,
-    game_state::ModelAssets,
+    game_state::{GameState, ModelAssets},
     level::{Level, Tile},
     simulation::SimulationStop,
 };
@@ -23,7 +23,64 @@ impl Plugin for PlayerPlugin {
             .observe(player_death)
             .observe(level_completed)
             .observe(animate_player_movement)
-            .add_systems(Update, debug_keyboard_move_forward);
+            .add_systems(Update, uncullable_mesh)
+            .add_systems(Update, debug_keyboard_move_forward)
+            .add_systems(OnEnter(GameState::MainMenu), pre_instance_player_mesh);
+    }
+}
+
+#[derive(Debug, Component)]
+pub struct Uncullable;
+
+fn pre_instance_player_mesh(mut commands: Commands, player_mesh: Res<ModelAssets>) {
+    commands.spawn((
+        Uncullable,
+        SceneBundle {
+            scene: player_mesh.player.clone(),
+            transform: Transform {
+                translation: Vec3::new(-100., -100., -100.),
+                scale: Vec3::ONE,
+                ..default()
+            },
+            ..default()
+        },
+    ));
+}
+
+fn has_uncullable_parent(
+    entity: Entity,
+    root_query: &Query<Entity, With<Uncullable>>,
+    parent_query: &Query<&Parent>,
+) -> bool {
+    if root_query.get(entity).is_ok() {
+        return true;
+    }
+
+    if let Ok(parent) = parent_query.get(entity) {
+        if has_uncullable_parent(parent.get(), root_query, parent_query) {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn uncullable_mesh(
+    mut commands: Commands,
+    mesh: Query<Entity, Added<Handle<Mesh>>>,
+    parents: Query<&Parent>,
+    root_query: Query<Entity, With<Uncullable>>,
+) {
+    for mesh in &mesh {
+        tracing::info!("found new mesh");
+
+        if has_uncullable_parent(mesh, &root_query, &parents) {
+            tracing::info!("mesh shouldnt be culled");
+
+            commands
+                .entity(mesh)
+                .insert((Name::new("unculled_mesh"), NoFrustumCulling));
+        }
     }
 }
 

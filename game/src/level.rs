@@ -1,7 +1,6 @@
 use bevy::{
-    log::tracing_subscriber::filter::targets::IntoIter,
     prelude::*,
-    utils::{HashMap, HashSet},
+    utils::HashMap,
 };
 use bevy_firework::{
     bevy_utilitarian::prelude::{Gradient, ParamCurve, RandF32, RandValue, RandVec3},

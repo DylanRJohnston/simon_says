@@ -1,5 +1,4 @@
 use bevy::asset::AssetMetaCheck;
-use bevy::core_pipeline::experimental::taa::{TemporalAntiAliasBundle, TemporalAntiAliasPlugin};
 use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::prelude::*;
 use bevy_firework::plugin::ParticleSystemPlugin;
