@@ -1,6 +1,11 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy_firework::plugin::ParticleSystemPlugin;
+use bevy_kira_audio::prelude::*;
+use bevy_kira_audio::{Audio, AudioPlugin};
 use bevy_tweening::TweeningPlugin;
+use game::music::MusicPlugin;
 use game::{
     actions::ActionPlugin, delayed_command::DelayedCommandPlugin, eyes::EyesPlugin,
     level::LevelPlugin, player::PlayerPlugin, simulation::SimulationPlugin, ui::UIPlugin,
@@ -19,6 +24,7 @@ fn main() {
         .add_plugins(DelayedCommandPlugin)
         .add_plugins(EyesPlugin)
         .add_plugins(ParticleSystemPlugin)
+        .add_plugins(MusicPlugin)
         // .insert_resource(ClearColor(Color::srgb_u8(0x33, 0x3c, 0x57)))
         .insert_resource(ClearColor(Color::srgb_u8(0xdd, 0xdd, 0xdd)))
         .insert_resource(AmbientLight {
@@ -50,10 +56,13 @@ fn setup(mut commands: Commands) {
         ..default()
     });
 
+    let mut transform = Transform::from_xyz(-3., 5.5, 9.0).looking_at(Vec3::ZERO, Vec3::Y);
+    transform.translation += Vec3::Y * 1.0;
+
     // camera
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(-2.5, 4.5, 9.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform,
             ..default()
         },
         IsDefaultUiCamera,

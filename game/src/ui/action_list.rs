@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::actions::{ActionPlan, RemoveAction};
+use crate::{
+    actions::{ActionPlan, RemoveAction},
+    level::Level,
+};
 
 use super::{button, constants::*, horizontal_line};
 
@@ -29,7 +32,7 @@ impl ActionListPlugin {
                     ..default()
                 },
                 border_radius: BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                background_color: Color::srgb_u8(0x56, 0x6c, 0x86).into(),
+                background_color: (*UI_BACKGROUND_COLOR).into(),
                 ..default()
             },
         ));
@@ -40,8 +43,10 @@ fn update_action_list(
     mut commands: Commands,
     action_plan: Res<ActionPlan>,
     query: Query<Entity, With<ActionPlanUI>>,
+    level: Res<Level>,
+    asset_server: Res<AssetServer>,
 ) {
-    if !action_plan.is_changed() {
+    if !(action_plan.is_changed() || level.is_changed()) {
         return;
     }
 
@@ -57,6 +62,27 @@ fn update_action_list(
                     TextStyle {
                         color: *PRIMARY_TEXT_COLOR,
                         font_size: 45.,
+                        ..default()
+                    },
+                ),
+                ..default()
+            });
+
+            parent.spawn(TextBundle {
+                style: Style {
+                    align_self: AlignSelf::FlexStart,
+                    ..default()
+                },
+                text: Text::from_section(
+                    format!(
+                        "{count}/{max} command{plural}",
+                        count = action_plan.len(),
+                        max = level.action_limit,
+                        plural = if action_plan.len() == 1 { "" } else { "s" }
+                    ),
+                    TextStyle {
+                        color: *PRIMARY_TEXT_COLOR,
+                        font_size: 20.,
                         ..default()
                     },
                 ),
@@ -80,15 +106,53 @@ fn update_action_list(
             }
 
             for (index, action) in action_plan.iter().enumerate() {
-                button::Button::builder()
-                    .text((*action).into())
-                    .on_click(Box::new(move |commands, _| {
-                        commands.trigger(RemoveAction(index))
-                    }))
-                    .background_color(*UI_BACKGROUND_COLOR)
-                    .border_color(*UI_BACKGROUND_COLOR)
-                    .hover_background_color(*BUTTON_CANCEL_COLOR)
-                    .build(parent);
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            width: Val::Percent(100.),
+                            justify_content: JustifyContent::FlexStart,
+                            align_items: AlignItems::Center,
+                            column_gap: Val::Px(8.0),
+                            ..default()
+                        },
+                        ..default()
+                    })
+                    .with_children(|row| {
+                        // TODO: Drag and drop doesn't work yet
+                        // row.spawn((
+                        //     NodeBundle {
+                        //         style: Style {
+                        //             width: Val::Px(20.),
+                        //             height: Val::Px(20.),
+                        //             ..default()
+                        //         },
+                        //         ..default()
+                        //     },
+                        //     UiImage::new(asset_server.load("icons/drag.png")),
+                        // ));
+
+                        row.spawn(TextBundle {
+                            style: Style {
+                                flex_grow: 1.,
+                                ..default()
+                            },
+                            text: Text::from_sections([TextSection::new(
+                                *action,
+                                TextStyle::default(),
+                            )]),
+                            ..default()
+                        });
+
+                        button::Button::builder()
+                            .icon(asset_server.load("icons/remove.png"))
+                            .on_click(Box::new(move |commands, _| {
+                                commands.trigger(RemoveAction(index))
+                            }))
+                            .background_color(*UI_BACKGROUND_COLOR)
+                            .border_color(*UI_BACKGROUND_COLOR)
+                            .hover_background_color(*BUTTON_CANCEL_COLOR)
+                            .build(row);
+                    });
             }
         });
 }

@@ -10,7 +10,7 @@ pub const UI_CONTAINER_GAP: f32 = 8.;
 
 // https://lospec.com/palette-list/sweetie-16
 pub static UI_BACKGROUND_COLOR: LazyLock<Color> =
-    LazyLock::new(|| Color::srgb_u8(0x56, 0x6c, 0x86));
+    LazyLock::new(|| Color::srgba_u8(0x56, 0x6c, 0x86, 0xdd));
 
 pub static PRIMARY_TEXT_COLOR: LazyLock<Color> = LazyLock::new(|| Color::srgb_u8(0xf4, 0xf4, 0xf4));
 pub static GHOST_TEXT_COLOR: LazyLock<Color> = LazyLock::new(|| Color::srgb_u8(0x94, 0xb0, 0xc2));

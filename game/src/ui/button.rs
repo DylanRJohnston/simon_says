@@ -2,14 +2,15 @@ use bevy::{ecs::system::EntityCommands, prelude::*};
 
 use super::{
     constants::{BUTTON_BORDER_THICKNESS, BUTTON_COLOR, PRIMARY_TEXT_COLOR},
-    BUTTON_BORDER_RADIUS,
+    BUTTON_BORDER_RADIUS, GHOST_TEXT_COLOR, UI_BACKGROUND_COLOR,
 };
 
 pub struct ButtonPlugin;
 
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, button_interaction)
+        app.register_type::<Button>()
+            .add_systems(Update, button_interaction)
             .add_systems(Update, update_style);
     }
 }
@@ -23,10 +24,9 @@ pub struct ButtonBuilder {
     hover_border_color: Option<Color>,
     text_color: Option<Color>,
     text: Option<String>,
+    icon: Option<Handle<Image>>,
+    disabled: bool,
 }
-
-#[derive(Debug, Component)]
-pub struct Disabled;
 
 impl ButtonBuilder {
     pub fn on_click(mut self, callback: OnClick) -> Self {
@@ -36,6 +36,11 @@ impl ButtonBuilder {
 
     pub fn text(mut self, text: String) -> Self {
         self.text = Some(text);
+        self
+    }
+
+    pub fn icon(mut self, icon: Handle<Image>) -> Self {
+        self.icon = Some(icon);
         self
     }
 
@@ -64,15 +69,22 @@ impl ButtonBuilder {
         self
     }
 
+    pub fn disabled(mut self) -> Self {
+        self.disabled = true;
+        self
+    }
+
     pub fn build<'a>(self, parent: &'a mut ChildBuilder) -> EntityCommands<'a> {
         let mut commands = parent.spawn((
+            Name::from("Button"),
             Button {
                 on_click: self.on_click.unwrap(),
-                background_color: self.background_color.unwrap_or(*BUTTON_COLOR),
-                border_color: self.border_color.unwrap_or(*BUTTON_COLOR),
-                hover_background_color: self.hover_background_color.unwrap_or(*BUTTON_COLOR),
-                hover_border_color: self.hover_border_color.unwrap_or(*PRIMARY_TEXT_COLOR),
-                text_color: self.text_color.unwrap_or(*PRIMARY_TEXT_COLOR),
+                background_color: self.background_color,
+                border_color: self.border_color,
+                hover_background_color: self.hover_background_color,
+                hover_border_color: self.hover_border_color,
+                text_color: self.text_color,
+                disabled: self.disabled,
             },
             ButtonBundle {
                 style: Style {
@@ -82,22 +94,40 @@ impl ButtonBuilder {
                     ..default()
                 },
                 border_radius: BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
-                background_color: (*BUTTON_COLOR).into(),
-                border_color: (*BUTTON_COLOR).into(),
+                background_color: self.background_color.unwrap_or(*BUTTON_COLOR).into(),
+                border_color: self
+                    .border_color
+                    .unwrap_or(self.background_color.unwrap_or(*BUTTON_COLOR))
+                    .into(),
                 ..default()
             },
         ));
         commands.with_children(|command_container| {
-            command_container.spawn(TextBundle {
-                text: Text::from_section(
-                    self.text.unwrap(),
-                    TextStyle {
-                        color: self.text_color.unwrap_or(*PRIMARY_TEXT_COLOR),
+            if let Some(text) = self.text {
+                command_container.spawn(TextBundle {
+                    text: Text::from_section(
+                        text,
+                        TextStyle {
+                            color: self.text_color.unwrap_or(*PRIMARY_TEXT_COLOR),
+                            ..default()
+                        },
+                    ),
+                    ..default()
+                });
+            }
+            if let Some(icon) = self.icon {
+                command_container.spawn((
+                    NodeBundle {
+                        style: Style {
+                            width: Val::Px(20.),
+                            height: Val::Px(20.),
+                            ..default()
+                        },
                         ..default()
                     },
-                ),
-                ..default()
-            });
+                    UiImage::new(icon),
+                ));
+            }
         });
         commands
     }
@@ -105,14 +135,17 @@ impl ButtonBuilder {
 
 pub type OnClick = Box<dyn Fn(&mut Commands, Entity) + Send + Sync + 'static>;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(from_reflect = false)]
 pub struct Button {
-    pub on_click: OnClick,
-    pub background_color: Color,
-    pub border_color: Color,
-    pub hover_background_color: Color,
-    pub hover_border_color: Color,
-    pub text_color: Color,
+    #[reflect(ignore)]
+    on_click: OnClick,
+    pub background_color: Option<Color>,
+    pub border_color: Option<Color>,
+    pub hover_background_color: Option<Color>,
+    pub hover_border_color: Option<Color>,
+    pub text_color: Option<Color>,
+    pub disabled: bool,
 }
 
 impl Button {
@@ -131,24 +164,48 @@ fn button_interaction(
             &mut BorderColor,
             &mut BackgroundColor,
         ),
-        (Changed<Interaction>, Without<Disabled>),
+        Changed<Interaction>,
     >,
 ) {
-    for (entity, interaction, button, mut button_color, mut background_color) in &mut actions {
+    for (entity, interaction, button, mut border_color, mut background_color) in &mut actions {
+        if button.disabled {
+            *border_color = BorderColor::from(*UI_BACKGROUND_COLOR);
+            *background_color = BackgroundColor::from(*UI_BACKGROUND_COLOR);
+
+            continue;
+        }
+
         match interaction {
             Interaction::Pressed => {
-                *button_color = BorderColor::from(button.hover_border_color);
-                *background_color = BackgroundColor::from(button.hover_border_color);
+                *border_color = button
+                    .hover_border_color
+                    .unwrap_or(*PRIMARY_TEXT_COLOR)
+                    .into();
+
+                *background_color = button
+                    .hover_border_color
+                    .unwrap_or(*PRIMARY_TEXT_COLOR)
+                    .into();
 
                 (button.on_click)(&mut commands, entity);
             }
             Interaction::Hovered => {
-                *button_color = BorderColor::from(button.hover_border_color);
-                *background_color = BackgroundColor::from(button.hover_background_color);
+                *border_color = button
+                    .hover_border_color
+                    .unwrap_or(*PRIMARY_TEXT_COLOR)
+                    .into();
+
+                *background_color = button
+                    .hover_background_color
+                    .unwrap_or(button.background_color.unwrap_or(*BUTTON_COLOR))
+                    .into();
             }
             Interaction::None => {
-                *button_color = BorderColor::from(button.border_color);
-                *background_color = BackgroundColor::from(button.background_color);
+                *border_color = button
+                    .border_color
+                    .unwrap_or(button.background_color.unwrap_or(*BUTTON_COLOR))
+                    .into();
+                *background_color = button.background_color.unwrap_or(*BUTTON_COLOR).into();
             }
         }
     }
@@ -159,11 +216,24 @@ fn update_style(
     mut text: Query<&mut Text>,
 ) {
     for (mut border_color, mut background_color, button, children) in &mut query {
-        for section in &mut text.get_mut(children[0]).unwrap().sections {
-            section.style.color = button.text_color;
+        if let Ok(mut text) = text.get_mut(children[0]) {
+            for section in &mut text.sections {
+                section.style.color = if !button.disabled {
+                    button.text_color.unwrap_or(*PRIMARY_TEXT_COLOR)
+                } else {
+                    *GHOST_TEXT_COLOR
+                };
+            }
         }
 
-        *background_color = button.background_color.into();
-        *border_color = button.border_color.into();
+        if button.disabled {
+            *border_color = BorderColor::from(*UI_BACKGROUND_COLOR);
+            *background_color = BackgroundColor::from(*UI_BACKGROUND_COLOR);
+
+            continue;
+        }
+
+        *background_color = button.background_color.unwrap_or(*BUTTON_COLOR).into();
+        *border_color = button.border_color.unwrap_or(*BUTTON_COLOR).into();
     }
 }

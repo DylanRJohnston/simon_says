@@ -4,12 +4,42 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = "0.14"
+bevy = { version = "0.14", default-features = false }
 bevy-inspector-egui = { version = "0.25.1", optional = true }
 bevy_firework = { version = "0.5.0", default-features = false }
+bevy_kira_audio = "0.20.0"
 bevy_tweening = "0.11.0"
+proptest = "1.5.0"
 rand = "0.8.5"
 tracing = "0.1.40"
 
 [features]
 debug = ["dep:bevy-inspector-egui"]
+default = [
+  "bevy/animation",
+  "bevy/bevy_asset",
+  "bevy/bevy_state",
+  "bevy/bevy_color",
+  "bevy/bevy_gilrs",
+  "bevy/bevy_scene",
+  "bevy/bevy_winit",
+  "bevy/bevy_core_pipeline",
+  "bevy/bevy_pbr",
+  "bevy/bevy_gltf",
+  "bevy/bevy_render",
+  "bevy/bevy_sprite",
+  "bevy/bevy_text",
+  "bevy/bevy_ui",
+  "bevy/multi_threaded",
+  "bevy/png",
+  "bevy/hdr",
+  "bevy/vorbis",
+  "bevy/x11",
+  "bevy/bevy_gizmos",
+  "bevy/android_shared_stdcxx",
+  "bevy/tonemapping_luts",
+  "bevy/smaa_luts",
+  "bevy/default_font",
+  "bevy/webgl2",
+  "bevy/sysinfo_plugin",
+]

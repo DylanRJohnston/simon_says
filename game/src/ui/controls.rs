@@ -1,6 +1,9 @@
-use bevy::{prelude::*, transform::commands};
+use bevy::prelude::*;
 
-use crate::actions::ActionPlan;
+use crate::{
+    actions::ActionPlan,
+    simulation::{self, SimulationState},
+};
 
 use super::*;
 
@@ -32,31 +35,15 @@ impl ControlsPlugin {
 }
 
 fn update_control_state(
-    mut commands: Commands,
     action_plan: Res<ActionPlan>,
-    mut query: Query<(Entity, &mut button::Button), With<PlayButton>>,
+    simulation_state: Res<State<SimulationState>>,
+    mut query: Query<&mut button::Button, With<PlayButton>>,
 ) {
-    if !action_plan.is_changed() {
+    if !(action_plan.is_changed() || simulation_state.is_changed()) {
         return;
     }
 
-    let (entity, mut button) = query.get_single_mut().unwrap();
-
-    if action_plan.is_empty() {
-        button.background_color = *UI_BACKGROUND_COLOR;
-        button.border_color = *UI_BACKGROUND_COLOR;
-        button.hover_background_color = *UI_BACKGROUND_COLOR;
-        button.hover_border_color = *UI_BACKGROUND_COLOR;
-        button.text_color = *GHOST_TEXT_COLOR;
-
-        commands.entity(entity).insert(button::Disabled);
-    } else {
-        button.background_color = *BUTTON_SUCCESS_COLOR;
-        button.border_color = *BUTTON_SUCCESS_COLOR;
-        button.hover_background_color = *BUTTON_SUCCESS_COLOR;
-        button.hover_border_color = *PRIMARY_TEXT_COLOR;
-        button.text_color = *PRIMARY_TEXT_COLOR;
-
-        commands.entity(entity).remove::<button::Disabled>();
+    for mut button in &mut query {
+        button.disabled = action_plan.is_empty() || *simulation_state == SimulationState::Running;
     }
 }

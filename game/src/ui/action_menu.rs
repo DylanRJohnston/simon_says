@@ -1,6 +1,7 @@
-use bevy::prelude::*;
+use action_list::ActionPlanUI;
+use bevy::{a11y::accesskit::Action, prelude::*};
 
-use crate::level::Level;
+use crate::{actions::ActionPlan, level::Level, simulation::SimulationState};
 
 use super::*;
 
@@ -8,7 +9,8 @@ pub struct ActionMenuPlugin;
 
 impl Plugin for ActionMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, update_available_actions);
+        app.add_systems(Update, update_available_actions)
+            .add_systems(Update, plan_is_full);
     }
 }
 
@@ -18,6 +20,7 @@ pub struct ActionMenuUI;
 impl ActionMenuPlugin {
     pub fn spawn_ui(container: &mut ChildBuilder) {
         container.spawn((
+            Name::new("Command Menu UI"),
             ActionMenuUI,
             NodeBundle {
                 style: Style {
@@ -33,6 +36,9 @@ impl ActionMenuPlugin {
         ));
     }
 }
+
+#[derive(Debug, Component)]
+pub struct ActionButton;
 
 fn update_available_actions(
     mut commands: Commands,
@@ -77,10 +83,30 @@ fn update_available_actions(
                         button::Button::builder()
                             .text(action.into())
                             .on_click(Box::new(move |commands, _| {
+                                tracing::info!("Triggering add action");
+
                                 commands.trigger(AddAction(action))
                             }))
-                            .build(action_row);
+                            .build(action_row)
+                            .insert(ActionButton);
                     }
                 });
         });
+}
+
+fn plan_is_full(
+    level: Res<Level>,
+    action_plan: Res<ActionPlan>,
+    simulation: Res<State<SimulationState>>,
+    mut buttons: Query<&mut button::Button, With<ActionButton>>,
+) {
+    if !action_plan.is_changed() && !level.is_changed() && !simulation.is_changed() {
+        return;
+    }
+
+    let full = action_plan.len() >= level.action_limit;
+
+    for mut button in &mut buttons {
+        button.disabled = full || simulation.get() == &SimulationState::Running;
+    }
 }
