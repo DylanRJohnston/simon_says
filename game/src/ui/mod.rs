@@ -4,6 +4,8 @@ use bevy::prelude::*;
 use button::ButtonPlugin;
 use constants::*;
 use controls::ControlsPlugin;
+use dialogue::DialoguePlugin;
+use end_screen::EndScreenPlugin;
 use main_menu::MainMenuPlugin;
 
 use crate::{actions::AddAction, game_state::GameState, simulation::SimulationStart};
@@ -13,6 +15,8 @@ pub mod action_menu;
 pub mod button;
 pub mod constants;
 pub mod controls;
+pub mod dialogue;
+pub mod end_screen;
 pub mod main_menu;
 
 pub struct UIPlugin;
@@ -24,6 +28,8 @@ impl Plugin for UIPlugin {
             .add_plugins(ActionMenuPlugin)
             .add_plugins(ControlsPlugin)
             .add_plugins(MainMenuPlugin)
+            .add_plugins(DialoguePlugin)
+            .add_plugins(EndScreenPlugin)
             .add_systems(OnEnter(GameState::InGame), setup);
     }
 }
