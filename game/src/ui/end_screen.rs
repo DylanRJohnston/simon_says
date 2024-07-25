@@ -38,7 +38,7 @@ fn end_game(_trigger: Trigger<GameFinished>, mut commands: Commands) {
                 })
                 .with_children(|container| {
                     container.spawn(TextBundle {
-                        text: Text::from_section("That's all for now, check back later or at the end of the Jam for more content! Early feedback is greatly appreciated however.", TextStyle {
+                        text: Text::from_section("That's all for now, check back later or at the end of the Jam for more content! Early feedback is greatly appreciated.", TextStyle {
                             color: *PRIMARY_TEXT_COLOR,
                             ..default()
                         }),

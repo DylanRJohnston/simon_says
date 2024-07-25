@@ -93,9 +93,9 @@ fn play_menu_music(
 
 #[cfg(not(target_arch = "wasm32"))]
 fn stop_menu_music(mut music: Music) {
-    music
-        .menu_music()
-        .stop(AudioTween::linear(Duration::from_secs_f32(5.)));
+    if let Some(handle) = music.menu_music() {
+        handle.stop(AudioTween::linear(Duration::from_secs_f32(5.)));
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -119,16 +119,14 @@ pub struct Music<'w> {
 }
 
 impl Music<'_> {
-    fn game_music(&mut self) -> &mut AudioInstance {
+    fn game_music(&mut self) -> Option<&mut AudioInstance> {
         self.audio_instances
-            .get_mut(&self.game_music_handle.as_mut().unwrap().0)
-            .unwrap()
+            .get_mut(&self.game_music_handle.as_mut()?.0)
     }
 
-    fn menu_music(&mut self) -> &mut AudioInstance {
+    fn menu_music(&mut self) -> Option<&mut AudioInstance> {
         self.audio_instances
-            .get_mut(&self.menu_music_handle.as_mut().unwrap().0)
-            .unwrap()
+            .get_mut(&self.menu_music_handle.as_mut()?.0)
     }
 }
 
@@ -144,6 +142,7 @@ fn level_completed(
     commands.trigger(SuppressMusicVolume {
         volume: 0.0,
         leading_edge: Duration::from_secs_f32(0.5),
+        middle: Duration::from_secs_f32(0.),
         falling_edge: Duration::from_secs(5),
     });
 }
@@ -152,6 +151,7 @@ fn level_completed(
 pub struct SuppressMusicVolume {
     pub volume: f64,
     pub leading_edge: Duration,
+    pub middle: Duration,
     pub falling_edge: Duration,
 }
 
@@ -166,7 +166,7 @@ fn suppress_music(trigger: Trigger<SuppressMusicVolume>, mut commands: Commands)
 
     let falling_edge = event.falling_edge;
     commands.spawn(DelayedCommand::new(
-        event.leading_edge.as_secs_f32(),
+        event.leading_edge.as_secs_f32() + event.middle.as_secs_f32(),
         move |commands| {
             commands.trigger(SetMusicVolume {
                 volume: DEFAULT_MUSIC_VOLUME,
@@ -189,9 +189,9 @@ fn set_music_volume(trigger: Trigger<SetMusicVolume>, mut music: Music) {
 
     let event = trigger.event();
 
-    music
-        .game_music()
-        .set_volume(event.volume, AudioTween::new(event.duration, event.easing));
+    if let Some(handle) = music.game_music() {
+        handle.set_volume(event.volume, AudioTween::new(event.duration, event.easing));
+    }
 }
 
 fn player_move(_trigger: Trigger<PlayerMove>, sounds: Res<SoundAssets>, audio: Res<Audio>) {

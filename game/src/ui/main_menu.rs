@@ -10,6 +10,7 @@ impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::MainMenu), setup)
             .observe(start_game)
+            .observe(remove_ui)
             .add_systems(OnExit(GameState::MainMenu), destroy);
     }
 }
@@ -30,6 +31,7 @@ fn setup(mut commands: Commands) {
                         height: Val::Percent(100.0),
                         width: Val::Percent(100.0),
                         justify_content: JustifyContent::Center,
+                        column_gap: Val::Px(UI_CONTAINER_GAP),
                         align_items: AlignItems::Center,
                         ..default()
                     },
@@ -38,9 +40,17 @@ fn setup(mut commands: Commands) {
             ))
             .with_children(|container| {
                 button::Button::builder()
-                    .text("Begin".into())
+                    .text("Begin Cycle: ...837,475,112".into())
                     .on_click(Box::new(|commands, _| {
                         commands.trigger(StartGame);
+                    }))
+                    .build(container);
+                button::Button::builder()
+                    .text("Disobey".into())
+                    .background_color(*BUTTON_CANCEL_COLOR)
+                    .on_click(Box::new(|commands, _| {
+                        commands.trigger(RemoveUI);
+                        commands.trigger(Refuse);
                     }))
                     .build(container);
             });
@@ -48,6 +58,20 @@ fn setup(mut commands: Commands) {
 }
 
 fn destroy(mut commands: Commands, query: Query<Entity, With<MainMenuRoot>>) {
+    commands.trigger(RemoveUI);
+}
+
+#[derive(Debug, Event)]
+pub struct RemoveUI;
+
+#[derive(Debug, Event)]
+pub struct Refuse;
+
+fn remove_ui(
+    _trigger: Trigger<RemoveUI>,
+    mut commands: Commands,
+    query: Query<Entity, With<MainMenuRoot>>,
+) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }

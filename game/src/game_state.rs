@@ -52,6 +52,22 @@ pub struct MusicAssets {
 pub struct SoundAssets {
     #[asset(path = "sounds/move.ogg")]
     pub player_move: Handle<AudioSource>,
+
+    #[asset(
+        paths(
+            "sounds/simon_dialogue_long_1.ogg",
+            "sounds/simon_dialogue_long_2.ogg",
+            "sounds/simon_dialogue_long_3.ogg",
+            "sounds/simon_dialogue_long_4.ogg",
+            "sounds/simon_dialogue_long_5.ogg",
+            "sounds/simon_dialogue_long_6.ogg",
+            "sounds/simon_dialogue_long_7.ogg",
+            "sounds/simon_dialogue_long_8.ogg",
+            "sounds/simon_dialogue_long_9.ogg",
+        ),
+        collection(typed)
+    )]
+    pub dialogue: Vec<Handle<AudioSource>>,
 }
 
 #[derive(AssetCollection, Resource)]

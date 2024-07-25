@@ -214,12 +214,15 @@ fn random_range(lower: f32, upper: f32) -> f32 {
     lower + rand::random::<f32>() * (upper - lower)
 }
 
-fn random_boredom_target() -> Vec3 {
-    Vec3::new(
-        rand::random::<f32>() * 10. - 5.,
-        rand::random::<f32>() * 3. - 1.5,
-        rand::random::<f32>() * 10. - 5.,
-    )
+fn random_boredom_target(position: Vec3, wander: f32) -> Vec3 {
+    (position
+        + wander
+            * Vec3::new(
+                rand::random::<f32>() * 10. - 5.,
+                rand::random::<f32>() * 3. - 1.5,
+                rand::random::<f32>() * 10. - 5.,
+            ))
+    .clamp(Vec3::new(-4., -1., -4.), Vec3::new(4., 2., 4.))
 }
 
 fn eye_emotion(
@@ -248,7 +251,7 @@ fn eye_emotion(
 
                     *emotion = Emotion::boredom();
                 } else {
-                    eye.target = player_position + random_boredom_target() / 5.;
+                    eye.target = random_boredom_target(eye.target, 0.2);
                     *emotion = Emotion::neutral();
                 }
             }
@@ -258,7 +261,7 @@ fn eye_emotion(
                 }
 
                 *emotion = Emotion::boredom();
-                eye.target = player_position + random_boredom_target();
+                eye.target = random_boredom_target(eye.target, 1.);
             }
             Emotion::Surprised(timer) => {
                 if !timer.tick(time.delta()).just_finished() {
@@ -272,7 +275,7 @@ fn eye_emotion(
                     continue;
                 }
 
-                eye.target = player_position + random_boredom_target() / 3.;
+                eye.target = player_position;
                 *emotion = Emotion::neutral();
             }
         }
