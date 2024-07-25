@@ -1,7 +1,4 @@
-use bevy::{
-    prelude::*,
-    utils::HashMap,
-};
+use bevy::{prelude::*, utils::HashMap};
 use bevy_firework::{
     bevy_utilitarian::prelude::{Gradient, ParamCurve, RandF32, RandValue, RandVec3},
     core::{BlendMode, ParticleSpawnerBundle, ParticleSpawnerSettings},
@@ -17,6 +14,31 @@ use crate::{
     player::{LevelCompleted, RespawnPlayer},
     ui::constants::BUTTON_SUCCESS_COLOR,
 };
+
+pub struct LevelPlugin;
+
+impl Plugin for LevelPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, setup)
+            .add_systems(Update, spawn_level.run_if(in_state(GameState::InGame)))
+            .observe(level_completed)
+            .observe(load_next_level);
+    }
+}
+
+#[derive(Debug)]
+pub enum Scene {
+    Start,
+    Level(Level),
+    Loop,
+    Finish,
+}
+
+impl From<Level> for Scene {
+    fn from(value: Level) -> Self {
+        Self::Level(value)
+    }
+}
 
 #[derive(Debug, Clone, Resource)]
 pub struct Level {
@@ -107,26 +129,29 @@ impl Default for LevelBuilder {
     }
 }
 
-pub static LEVELS: LazyLock<[Level; 7]> = LazyLock::new(|| {
-    [
+static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
+    vec![
         LevelBuilder::new()
             .action_limit(1)
             .actions([Action::Forward])
             .block((-2, 0), (2, 0), Tile::Basic)
             .insert([((-2, 0), Tile::Start), ((2, 0), Tile::Finish)])
-            .build(),
+            .build()
+            .into(),
         LevelBuilder::new()
             .action_limit(2)
             .actions([Action::Forward, Action::Right])
             .block((-2, -2), (2, 2), Tile::Basic)
             .insert([((-2, -2), Tile::Start), ((2, 2), Tile::Finish)])
-            .build(),
+            .build()
+            .into(),
         LevelBuilder::new()
             .action_limit(2)
             .block((-2, -2), (2, 2), Tile::Basic)
             .insert([((-2, 2), Tile::Start), ((2, -2), Tile::Finish)])
             .remove([(2, -1)])
-            .build(),
+            .build()
+            .into(),
         LevelBuilder::new()
             .action_limit(3)
             .block((-1, -1), (1, 1), Tile::Basic)
@@ -139,7 +164,8 @@ pub static LEVELS: LazyLock<[Level; 7]> = LazyLock::new(|| {
                 ((2, 0), Tile::Wall),
                 ((-2, 0), Tile::Wall),
             ])
-            .build(),
+            .build()
+            .into(),
         LevelBuilder::new()
             .action_limit(6)
             .block((-1, -1), (1, 1), Tile::Basic)
@@ -157,7 +183,8 @@ pub static LEVELS: LazyLock<[Level; 7]> = LazyLock::new(|| {
                 ((3, 1), Tile::Finish),
             ])
             .insert([])
-            .build(),
+            .build()
+            .into(),
         LevelBuilder::new()
             .action_limit(6)
             .block((-3, -2), (-1, -1), Tile::Basic)
@@ -172,25 +199,10 @@ pub static LEVELS: LazyLock<[Level; 7]> = LazyLock::new(|| {
                 ((-1, -2), Tile::Wall),
                 ((-1, 2), Tile::Wall),
             ])
-            .build(),
-        LevelBuilder::new()
-            .action_limit(0)
-            .insert([((0, 0), Tile::Start)])
-            .actions([])
-            .build(),
+            .build()
+            .into(),
     ]
 });
-
-pub struct LevelPlugin;
-
-impl Plugin for LevelPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
-            .add_systems(Update, spawn_level.run_if(in_state(GameState::InGame)))
-            .observe(level_completed)
-            .observe(load_next_level);
-    }
-}
 
 #[derive(Debug, Resource, Deref)]
 pub struct TileMesh(Handle<Mesh>);
@@ -220,7 +232,23 @@ fn setup(
         wall,
     });
 
-    commands.insert_resource(LEVELS[0].clone());
+    let start = (SCENES
+        .iter()
+        .enumerate()
+        .find(|(_, scene)| matches!(scene, Scene::Start))
+        .map(|(i, _)| i as i32)
+        .unwrap_or(-1)
+        + 1) as usize;
+
+    commands.insert_resource(LevelCounter(start));
+
+    match &SCENES[start] {
+        Scene::Level(level) => commands.insert_resource(level.clone()),
+        other => panic!(
+            "the scene after the start scene must be a level, found {:?}",
+            other
+        ),
+    }
 
     let mut settings = ParticleSpawnerSettings {
         one_shot: false,
@@ -359,17 +387,36 @@ fn level_completed(
 #[derive(Debug, Event)]
 pub struct LoadNextLevel;
 
+#[derive(Debug, Resource, Deref, DerefMut)]
+struct LevelCounter(usize);
+
 fn load_next_level(
     _trigger: Trigger<LoadNextLevel>,
     mut commands: Commands,
     mut level: ResMut<Level>,
-    mut level_counter: Local<usize>,
+    mut level_counter: ResMut<LevelCounter>,
 ) {
-    *level_counter += 1;
+    **level_counter += 1;
 
-    if let Some(next_level) = (*LEVELS).get(*level_counter) {
-        *level = next_level.clone();
-    } else {
-        commands.trigger(GameFinished);
+    match (*SCENES).get(**level_counter) {
+        Some(Scene::Level(next_level)) => {
+            *level = next_level.clone();
+        }
+        Some(Scene::Loop) => {
+            **level_counter -= 2;
+            commands.trigger(LoadNextLevel);
+        }
+        Some(Scene::Start) => {
+            commands.trigger(LoadNextLevel);
+        }
+        Some(Scene::Finish) | None => {
+            tracing::info!("game finished");
+            *level = LevelBuilder::new()
+                .action_limit(0)
+                .insert([((0, 0), Tile::Start)])
+                .actions([])
+                .build();
+            commands.trigger(GameFinished);
+        }
     }
 }

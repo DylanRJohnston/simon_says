@@ -4,7 +4,7 @@ use crate::{
     actions::{ActionPlan, RemoveAction},
     game_state::{GameState, IconAssets},
     level::Level,
-    simulation::{SimulationState},
+    simulation::{SimulationProgramCounter, SimulationState},
 };
 
 use super::{button, constants::*, horizontal_line};
@@ -16,7 +16,8 @@ impl Plugin for ActionListPlugin {
         app.add_systems(
             Update,
             update_action_list.run_if(in_state(GameState::InGame)),
-        );
+        )
+        .add_systems(Update, reorder_button.run_if(in_state(GameState::InGame)));
     }
 }
 
@@ -44,15 +45,34 @@ impl ActionListPlugin {
     }
 }
 
+#[derive(Debug)]
+pub enum ButtonType {
+    Up,
+    Down,
+}
+
+#[derive(Debug, Component)]
+pub struct ReorderButton {
+    pub button_type: ButtonType,
+    pub index: usize,
+    pub disabled: bool,
+}
+
 fn update_action_list(
     mut commands: Commands,
+    query: Query<Entity, With<ActionPlanUI>>,
+    icons: Res<IconAssets>,
+    // System runs when these change,
     action_plan: Res<ActionPlan>,
     level: Res<Level>,
     simulation_state: Res<State<SimulationState>>,
-    query: Query<Entity, With<ActionPlanUI>>,
-    icons: Res<IconAssets>,
+    program_counter: Res<SimulationProgramCounter>,
 ) {
-    if !(action_plan.is_changed() || level.is_changed() || simulation_state.is_changed()) {
+    if !(action_plan.is_changed()
+        || level.is_changed()
+        || simulation_state.is_changed()
+        || program_counter.is_changed())
+    {
         return;
     }
 
@@ -111,30 +131,96 @@ fn update_action_list(
             }
 
             for (index, action) in action_plan.iter().enumerate() {
+                let prevent_interactions = simulation_state.get() == &SimulationState::Running;
+
+                let background_color = if program_counter.0 == index && prevent_interactions {
+                    (*GHOST_TEXT_COLOR).into()
+                } else {
+                    BackgroundColor::default()
+                };
+
                 parent
                     .spawn(NodeBundle {
                         style: Style {
                             width: Val::Percent(100.),
+                            min_height: Val::Px(40.),
+                            // padding: UiRect::left(Val::Px(16.)),
                             justify_content: JustifyContent::FlexStart,
                             align_items: AlignItems::Center,
                             column_gap: Val::Px(8.0),
                             ..default()
                         },
+                        border_radius: BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
+                        background_color,
                         ..default()
                     })
                     .with_children(|row| {
-                        // TODO: Drag and drop doesn't work yet
-                        // row.spawn((
-                        //     NodeBundle {
-                        //         style: Style {
-                        //             width: Val::Px(20.),
-                        //             height: Val::Px(20.),
-                        //             ..default()
-                        //         },
-                        //         ..default()
-                        //     },
-                        //     UiImage::new(asset_server.load("icons/drag.png")),
-                        // ));
+                        row.spawn(NodeBundle {
+                            style: Style {
+                                width: Val::Px(24.),
+                                height: Val::Px(24.),
+                                ..default()
+                            },
+                            ..default()
+                        })
+                        .with_children(|re_arrange_box| {
+                            if prevent_interactions {
+                                return;
+                            }
+
+                            let up_disabled = index == 0;
+                            re_arrange_box.spawn((
+                                ButtonBundle {
+                                    style: Style {
+                                        width: Val::Px(24.),
+                                        height: Val::Px(24.),
+                                        top: Val::Px(-8.),
+                                        position_type: PositionType::Absolute,
+                                        ..default()
+                                    },
+                                    image: UiImage::new(icons.up.clone()).with_color(
+                                        if up_disabled {
+                                            *GHOST_ATTENUATION_COLOR
+                                        } else {
+                                            Color::WHITE
+                                        },
+                                    ),
+
+                                    ..default()
+                                },
+                                ReorderButton {
+                                    button_type: ButtonType::Up,
+                                    disabled: up_disabled,
+                                    index,
+                                },
+                            ));
+
+                            let down_disabled = index == (action_plan.len() - 1);
+                            re_arrange_box.spawn((
+                                ButtonBundle {
+                                    style: Style {
+                                        width: Val::Px(24.),
+                                        height: Val::Px(24.),
+                                        bottom: Val::Px(-8.),
+                                        position_type: PositionType::Absolute,
+                                        ..default()
+                                    },
+                                    image: UiImage::new(icons.down.clone()).with_color(
+                                        if down_disabled {
+                                            *GHOST_ATTENUATION_COLOR
+                                        } else {
+                                            Color::WHITE
+                                        },
+                                    ),
+                                    ..default()
+                                },
+                                ReorderButton {
+                                    button_type: ButtonType::Down,
+                                    disabled: down_disabled,
+                                    index,
+                                },
+                            ));
+                        });
 
                         row.spawn(TextBundle {
                             style: Style {
@@ -148,7 +234,7 @@ fn update_action_list(
                             ..default()
                         });
 
-                        if simulation_state.get() == &SimulationState::Running {
+                        if prevent_interactions {
                             return;
                         }
 
@@ -164,4 +250,36 @@ fn update_action_list(
                     });
             }
         });
+}
+
+fn reorder_button(
+    mut buttons: Query<(Entity, &ReorderButton, &Interaction, &mut UiImage), Changed<Interaction>>,
+    mut action_plan: ResMut<ActionPlan>,
+) {
+    for (entity, button, interaction, mut image) in &mut buttons {
+        if button.disabled {
+            continue;
+        }
+
+        match interaction {
+            Interaction::None => {
+                image.color = Color::WHITE;
+            }
+            Interaction::Hovered => {
+                image.color = *BUTTON_COLOR;
+            }
+            Interaction::Pressed => {
+                tracing::info!(?entity, ?interaction, ?button.button_type,  "button pressed");
+
+                match button.button_type {
+                    ButtonType::Up => {
+                        action_plan.swap(button.index, button.index - 1);
+                    }
+                    ButtonType::Down => {
+                        action_plan.swap(button.index, button.index + 1);
+                    }
+                }
+            }
+        }
+    }
 }

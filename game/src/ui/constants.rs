@@ -14,6 +14,8 @@ pub static UI_BACKGROUND_COLOR: LazyLock<Color> =
 
 pub static PRIMARY_TEXT_COLOR: LazyLock<Color> = LazyLock::new(|| Color::srgb_u8(0xf4, 0xf4, 0xf4));
 pub static GHOST_TEXT_COLOR: LazyLock<Color> = LazyLock::new(|| Color::srgb_u8(0x94, 0xb0, 0xc2));
+pub static GHOST_ATTENUATION_COLOR: LazyLock<Color> =
+    LazyLock::new(|| Color::srgb_u8(0x9A, 0xB7, 0xca));
 
 // Button Constants
 pub const BUTTON_BORDER_THICKNESS: f32 = 4.;

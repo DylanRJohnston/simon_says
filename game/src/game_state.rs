@@ -66,9 +66,12 @@ pub struct ModelAssets {
 
 #[derive(AssetCollection, Resource)]
 pub struct IconAssets {
-    #[asset(path = "icons/drag.png")]
-    pub drag: Handle<Image>,
-
     #[asset(path = "icons/remove.png")]
     pub remove: Handle<Image>,
+
+    #[asset(path = "icons/up.png")]
+    pub up: Handle<Image>,
+
+    #[asset(path = "icons/down.png")]
+    pub down: Handle<Image>,
 }
