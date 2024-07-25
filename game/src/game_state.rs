@@ -41,6 +41,11 @@ pub struct MusicAssets {
 
     #[asset(path = "music/where_am_i.ogg")]
     pub where_am_i: Handle<AudioSource>,
+
+    #[asset(path = "music/anachronism.ogg")]
+    pub anachronism: Handle<AudioSource>,
+    // #[asset(path = "music/didact.ogg")]
+    // pub didact: Handle<AudioSource>,
 }
 
 #[derive(AssetCollection, Resource)]

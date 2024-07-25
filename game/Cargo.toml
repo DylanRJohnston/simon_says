@@ -12,6 +12,8 @@ bevy_kira_audio = "0.20.0"
 bevy_tweening = "0.11.0"
 rand = "0.8.5"
 tracing = "0.1.40"
+wasm-bindgen = { version = "0.2.92", optional = true }
+wasm-bindgen-macro = { version = "0.2.92", optional = true }
 
 [dev-dependencies]
 proptest = "1.5.0"
@@ -46,3 +48,4 @@ default = [
   "bevy/webgl2",
   "bevy/sysinfo_plugin",
 ]
+wasm = ["dep:wasm-bindgen", "dep:wasm-bindgen-macro"]

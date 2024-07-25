@@ -2073,6 +2073,8 @@ dependencies = [
  "proptest",
  "rand",
  "tracing",
+ "wasm-bindgen",
+ "wasm-bindgen-macro",
 ]
 
 [[package]]
