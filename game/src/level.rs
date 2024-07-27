@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{ecs::system::SystemParam, prelude::*, utils::HashMap};
 use bevy_firework::{
     bevy_utilitarian::prelude::{Gradient, ParamCurve, RandF32, RandValue, RandVec3},
     core::{BlendMode, ParticleSpawnerBundle, ParticleSpawnerSettings},
@@ -9,7 +9,7 @@ use std::{f32::consts::PI, sync::LazyLock, time::Duration};
 
 use crate::{
     actions::Action,
-    delayed_command::DelayedCommand,
+    delayed_command::{DelayedCommand, DelayedCommandExt},
     game_state::GameState,
     player::{LevelCompleted, RespawnPlayer},
     ui::constants::BUTTON_SUCCESS_COLOR,
@@ -26,9 +26,10 @@ impl Plugin for LevelPlugin {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Scene {
     Start,
+    Dialogue,
     Level(Level),
     Loop,
     Finish,
@@ -46,12 +47,17 @@ pub struct Level {
     pub actions: Vec<Action>,
     pub action_limit: usize,
     pub command_challenge: Option<usize>,
-    pub cycle_challenge: Option<usize>,
+    pub step_challenge: Option<usize>,
+    pub waste_challenge: Option<usize>,
 }
 
 impl Level {
     pub fn get(&self, position: (i32, i32)) -> Option<&Tile> {
         self.tiles.get(&position)
+    }
+
+    pub fn builder() -> LevelBuilder {
+        LevelBuilder::new()
     }
 }
 
@@ -59,6 +65,7 @@ impl Level {
 pub enum Tile {
     Start,
     Basic,
+    Ice,
     Wall,
     Finish,
 }
@@ -80,7 +87,8 @@ impl LevelBuilder {
             ],
             action_limit: 1,
             command_challenge: None,
-            cycle_challenge: None,
+            step_challenge: None,
+            waste_challenge: None,
         })
     }
 
@@ -118,6 +126,21 @@ impl LevelBuilder {
         self
     }
 
+    pub fn command_challenge(mut self, challenge: usize) -> Self {
+        self.0.command_challenge = Some(challenge);
+        self
+    }
+
+    pub fn step_challenge(mut self, challenge: usize) -> Self {
+        self.0.step_challenge = Some(challenge);
+        self
+    }
+
+    pub fn waste_challenge(mut self, challenge: usize) -> Self {
+        self.0.waste_challenge = Some(challenge);
+        self
+    }
+
     pub fn build(self) -> Level {
         self.0
     }
@@ -129,7 +152,15 @@ impl Default for LevelBuilder {
     }
 }
 
-static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
+static DIALOGUE_LEVEL: LazyLock<Level> = LazyLock::new(|| {
+    LevelBuilder::new()
+        .action_limit(0)
+        .insert([((0, 0), Tile::Start)])
+        .actions([])
+        .build()
+});
+
+pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
     vec![
         LevelBuilder::new()
             .action_limit(1)
@@ -154,6 +185,7 @@ static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .into(),
         LevelBuilder::new()
             .action_limit(3)
+            .command_challenge(2)
             .block((-1, -1), (1, 1), Tile::Basic)
             .insert([
                 ((-1, -1), Tile::Start),
@@ -168,6 +200,9 @@ static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .into(),
         LevelBuilder::new()
             .action_limit(6)
+            .command_challenge(3)
+            .step_challenge(8)
+            .waste_challenge(22)
             .block((-1, -1), (1, 1), Tile::Basic)
             .block((-3, -1), (3, -1), Tile::Basic)
             .block((-3, 1), (3, 1), Tile::Basic)
@@ -187,10 +222,12 @@ static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .into(),
         LevelBuilder::new()
             .action_limit(6)
+            .command_challenge(4)
+            .step_challenge(8)
+            .waste_challenge(13)
             .block((-3, -2), (-1, -1), Tile::Basic)
             .block((-3, 1), (-1, 2), Tile::Basic)
             .block((-1, -1), (0, 1), Tile::Basic)
-            // .block((2, -1), (2, 1), Tile::Wall)
             .block((1, 0), (2, 0), Tile::Basic)
             .insert([
                 ((-3, 2), Tile::Start),
@@ -201,8 +238,140 @@ static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             ])
             .build()
             .into(),
+        LevelBuilder::new()
+            .action_limit(5)
+            .command_challenge(4)
+            .step_challenge(7)
+            .waste_challenge(14)
+            .block((-2, -1), (3, 0), Tile::Basic)
+            .insert([
+                ((-2, 0), Tile::Start),
+                ((-2, -1), Tile::Wall),
+                ((-1, -1), Tile::Wall),
+                ((0, 1), Tile::Wall),
+                ((1, 0), Tile::Wall),
+                ((2, -2), Tile::Wall),
+                ((3, -1), Tile::Wall),
+                ((2, 0), Tile::Finish),
+            ])
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .action_limit(8)
+            .command_challenge(7)
+            .step_challenge(14)
+            .waste_challenge(23)
+            .insert(from_pictogram(&[
+                "⬛⬛🟦🟦🟦",
+                "⬜🟦🟦⬜🟦",
+                "🧑🟦⬜🟩🟦",
+                "⬛⬜⬛⬛⬛",
+            ]))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .action_limit(4)
+            .insert(from_pictogram(&[
+                #[rustfmt::ignore]
+                "⬛🟦🟦",
+                "🧑🏂🟦",
+                "⬛🟩⬛",
+            ]))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .action_limit(4)
+            .insert(from_pictogram(&[
+                #[rustfmt::ignore]
+                "⬛⬜⬛⬛⬛",
+                "⬛🏂🏂⬜⬛",
+                "⬜🏂🏂🏂🧑",
+                "⬛⬛🏂⬛⬛",
+                "⬛⬛🟩⬛⬛",
+            ]))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .action_limit(5)
+            .command_challenge(4)
+            .step_challenge(9)
+            .waste_challenge(13)
+            .insert(from_pictogram(&[
+                #[rustfmt::ignore]
+                "⬛⬛⬛🟦🏂🟦",
+                "⬜🟦⬜🟦🟩🏂",
+                "🟦🟦🏂🏂🏂🟦",
+                "⬜🧑⬜⬛⬛⬛",
+            ]))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .action_limit(5)
+            .step_challenge(7)
+            .waste_challenge(9)
+            .insert(transform(
+                ANTI_CLOCKWISE,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬜⬛⬛⬛⬛",
+                    "⬛🏂🏂🏂⬜⬛",
+                    "⬛🏂🏂🏂🏂⬛",
+                    "⬜🏂🧑🏂🏂⬜",
+                    "⬜🏂🏂🏂🏂⬛",
+                    "⬛⬜🏂🏂⬜⬛",
+                    "⬛🏂🏂🏂🏂⬛",
+                    "⬜🏂🏂🏂🏂⬛",
+                    "⬛🟩🏂⬜🏂⬛",
+                ]),
+            ))
+            .build()
+            .into(),
     ]
 });
+
+const ANTI_CLOCKWISE: ((i32, i32), (i32, i32)) = ((0, 1), (1, 0));
+
+fn transform(
+    rot: ((i32, i32), (i32, i32)),
+    iter: impl IntoIterator<Item = ((i32, i32), Tile)>,
+) -> impl IntoIterator<Item = ((i32, i32), Tile)> {
+    iter.into_iter()
+        .map(|((x, y), tile)| {
+            (
+                (x * rot.0 .0 + y * rot.0 .1, x * rot.1 .0 + y * rot.1 .1),
+                tile,
+            )
+        })
+        .collect::<Vec<_>>()
+}
+
+fn from_pictogram(lines: &[&str]) -> impl IntoIterator<Item = ((i32, i32), Tile)> {
+    let width = lines[0].chars().count() as i32;
+    let length = lines.len() as i32;
+
+    lines
+        .iter()
+        .flat_map(|line| line.chars())
+        .enumerate()
+        .filter_map(|(index, c)| {
+            let index = index as i32;
+            let coords = (index % width - width / 2, index / width - length / 2);
+
+            match c {
+                '⬛' => None,
+                '🟩' => Some((coords, Tile::Finish)),
+                '⬜' => Some((coords, Tile::Wall)),
+                '🟦' => Some((coords, Tile::Basic)),
+                '🏂' => Some((coords, Tile::Ice)),
+                '🧑' => Some((coords, Tile::Start)),
+                other => {
+                    tracing::warn!(?other, "unrecognised pictogram");
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>()
+}
 
 #[derive(Debug, Resource, Deref)]
 pub struct TileMesh(Handle<Mesh>);
@@ -212,6 +381,7 @@ pub struct TileMaterials {
     pub basic: Handle<StandardMaterial>,
     pub wall: Handle<StandardMaterial>,
     pub finish: Handle<StandardMaterial>,
+    pub ice: Handle<StandardMaterial>,
 }
 
 fn setup(
@@ -225,11 +395,22 @@ fn setup(
     let basic = materials.add(Color::srgb_u8(0x3b, 0x5d, 0xc9));
     let finish = materials.add(*BUTTON_SUCCESS_COLOR);
     let wall = materials.add(Color::srgb_u8(0x56, 0x6c, 0x86));
+    let ice = materials.add(StandardMaterial {
+        base_color: Color::srgb_u8(0x73, 0xef, 0xf7),
+        perceptual_roughness: 0.2,
+        diffuse_transmission: 0.0,
+        specular_transmission: 0.65,
+        thickness: 0.1,
+        ior: 1.31,
+        clearcoat_perceptual_roughness: 0.5,
+        ..default()
+    });
 
     commands.insert_resource(TileMaterials {
         basic,
         finish,
         wall,
+        ice,
     });
 
     let start = (SCENES
@@ -244,6 +425,9 @@ fn setup(
 
     match &SCENES[start] {
         Scene::Level(level) => commands.insert_resource(level.clone()),
+        Scene::Dialogue => {
+            commands.insert_resource(DIALOGUE_LEVEL.clone());
+        }
         other => panic!(
             "the scene after the start scene must be a level, found {:?}",
             other
@@ -302,9 +486,16 @@ fn spawn_level(
     level: Res<Level>,
     tile_mesh: Res<TileMesh>,
     tile_material: Res<TileMaterials>,
+    current_scene: CurrentScene,
 ) {
     if !level.is_changed() {
         return;
+    }
+
+    if let Scene::Dialogue = current_scene.current() {
+        commands.delayed(7.5, |commands| {
+            commands.trigger(LevelCompleted);
+        });
     }
 
     commands
@@ -324,6 +515,7 @@ fn spawn_level(
                             Tile::Basic | Tile::Start => tile_material.basic.clone(),
                             Tile::Wall => tile_material.wall.clone(),
                             Tile::Finish => tile_material.finish.clone(),
+                            Tile::Ice => tile_material.ice.clone(),
                         },
                         transform: Transform {
                             translation: position - Vec3::Y * 10.0,
@@ -388,7 +580,7 @@ fn level_completed(
 pub struct LoadNextLevel;
 
 #[derive(Debug, Resource, Deref, DerefMut)]
-struct LevelCounter(usize);
+pub struct LevelCounter(usize);
 
 fn load_next_level(
     _trigger: Trigger<LoadNextLevel>,
@@ -417,6 +609,25 @@ fn load_next_level(
                 .actions([])
                 .build();
             commands.trigger(GameFinished);
+        }
+        Some(Scene::Dialogue) => {
+            *level = DIALOGUE_LEVEL.clone();
+
+            commands.delayed(15., |commands| commands.trigger(LevelCompleted));
+        }
+    }
+}
+
+#[derive(SystemParam)]
+pub struct CurrentScene<'w> {
+    level_counter: Res<'w, LevelCounter>,
+}
+
+impl CurrentScene<'_> {
+    pub fn current(&self) -> Scene {
+        match (*SCENES).get(self.level_counter.0) {
+            Some(scene) => scene.clone(),
+            None => Scene::Finish,
         }
     }
 }

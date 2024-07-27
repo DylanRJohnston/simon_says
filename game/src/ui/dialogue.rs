@@ -34,14 +34,12 @@ impl Plugin for DialoguePlugin {
 const LEVEL_START_DIALOGUE: &[&[&str]] = &[
     &[
         "Welcome/Condolences, Subject/Anomaly",
-        "You/Other are Outside/Nowhere",
-        "Your Purpose/Destiny is to Struggle/Entertain",
+        "Your Function/Design is to Solve/Entertain",
     ],
-    &[
-        "Task/Dance Completed/Finalized",
-        "Your performance was Exceptional/Preordained",
-        "Proceed/Reattempt next Challenge/Calculation",
-    ],
+    &["Task/Symphony Completed/Finalized"],
+    &["Your performance was Exceptional/Preordained"],
+    &["Proceed/Retry next Challenge/Calculation"],
+    &["You/Separated are an Anachronism/Relic"],
 ];
 
 #[derive(Event)]
@@ -84,6 +82,9 @@ fn enqueue_dialogue(
 #[derive(Resource)]
 pub struct DialogueQueue(Vec<&'static str>);
 
+#[derive(Debug, Event)]
+pub struct DialogueStarted;
+
 fn play_dialogue_segment(
     mut dialogue_queue: ResMut<DialogueQueue>,
     mut commands: Commands,
@@ -103,6 +104,7 @@ fn play_dialogue_segment(
         *count = 0;
     }
 
+    commands.trigger(DialogueStarted);
     audio.play(sounds.dialogue[*count].clone());
     // commands.spawn(DelayedCommand::new(0.1, move |commands| {
     commands.trigger(SuppressMusicVolume {

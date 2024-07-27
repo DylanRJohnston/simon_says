@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{ecs::system::EntityCommands, prelude::*};
 
 pub struct DelayedCommandPlugin;
 
@@ -12,7 +12,7 @@ impl Plugin for DelayedCommandPlugin {
 
 #[derive(Component)]
 pub struct DelayedCommand {
-    // This could be FnOnce if we d some mem/swap magic with a no-op closure
+    // This could be FnOnce if we did some mem/swap magic with a no-op closure
     pub command: Box<dyn FnMut(&mut Commands) + Send + Sync + 'static>,
     pub delay: Timer,
 }
@@ -38,5 +38,23 @@ fn run_delayed_commands(
 
         (command.command)(&mut commands);
         commands.entity(entity).despawn_recursive();
+    }
+}
+
+pub trait DelayedCommandExt {
+    fn delayed<'a>(
+        &'a mut self,
+        secs: f32,
+        command: impl FnMut(&mut Commands) + Send + Sync + 'static,
+    ) -> EntityCommands<'a>;
+}
+
+impl DelayedCommandExt for Commands<'_, '_> {
+    fn delayed<'a>(
+        &'a mut self,
+        secs: f32,
+        command: impl FnMut(&mut Commands) + Send + Sync + 'static,
+    ) -> EntityCommands<'a> {
+        self.spawn(DelayedCommand::new(secs, command))
     }
 }

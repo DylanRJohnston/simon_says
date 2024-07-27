@@ -11,6 +11,8 @@ impl Plugin for MainMenuPlugin {
         app.add_systems(OnEnter(GameState::MainMenu), setup)
             .observe(start_game)
             .observe(remove_ui)
+            .observe(spawn_main_menu)
+            .observe(refuse)
             .add_systems(OnExit(GameState::MainMenu), destroy);
     }
 }
@@ -22,6 +24,13 @@ pub struct MainMenuRoot;
 pub struct StartGame;
 
 fn setup(mut commands: Commands) {
+    commands.trigger(SpawnMainMenu);
+}
+
+#[derive(Debug, Event)]
+struct SpawnMainMenu;
+
+fn spawn_main_menu(_trigger: Trigger<SpawnMainMenu>, mut commands: Commands) {
     commands.spawn(DelayedCommand::new(0.5, |commands| {
         commands
             .spawn((
@@ -40,13 +49,14 @@ fn setup(mut commands: Commands) {
             ))
             .with_children(|container| {
                 button::Button::builder()
-                    .text("Begin Cycle: ...837,475,112".into())
+                    .text("Begin Cycle No. 4,815,162,342".into())
                     .on_click(Box::new(|commands, _| {
                         commands.trigger(StartGame);
                     }))
                     .build(container);
                 button::Button::builder()
                     .text("Disobey".into())
+                    // .text("Vibe".into())
                     .background_color(*BUTTON_CANCEL_COLOR)
                     .on_click(Box::new(|commands, _| {
                         commands.trigger(RemoveUI);
@@ -66,6 +76,16 @@ pub struct RemoveUI;
 
 #[derive(Debug, Event)]
 pub struct Refuse;
+
+fn refuse(
+    _trigger: Trigger<Refuse>,
+    mut commands: Commands,
+    query: Query<Entity, With<MainMenuRoot>>,
+) {
+    commands.spawn(DelayedCommand::new(35., |commands| {
+        commands.trigger(SpawnMainMenu);
+    }));
+}
 
 fn remove_ui(
     _trigger: Trigger<RemoveUI>,

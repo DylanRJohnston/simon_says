@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, time::Duration};
 
-use bevy::{prelude::*, render::view::NoFrustumCulling};
+use bevy::{prelude::*, render::view::NoFrustumCulling, tasks::futures_lite::future};
 use bevy_tweening::{
     lens::{TransformPositionLens, TransformRotationLens},
     Animator, EaseFunction, Sequence, Tracks, Tween, Tweenable,
@@ -11,7 +11,7 @@ use crate::{
     delayed_command::DelayedCommand,
     game_state::{GameState, ModelAssets},
     level::{Level, Tile},
-    simulation::SimulationStop,
+    simulation::{run_simulation_step, SimulationEvent, SimulationPause, SimulationStop},
 };
 
 pub struct PlayerPlugin;
@@ -84,7 +84,7 @@ fn uncullable_mesh(
     }
 }
 
-#[derive(Debug, Component, Default, Clone, Copy)]
+#[derive(Debug, Component, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Player {
     pub position: (i32, i32),
 }
@@ -231,34 +231,22 @@ fn attempt_action(
     mut players: Query<(Entity, &mut Player)>,
 ) {
     for (entity, mut player) in &mut players {
-        let mut future_position = match trigger.event() {
-            Action::Forward => (player.position.0 + 1, player.position.1),
-            Action::Backward => (player.position.0 - 1, player.position.1),
-            Action::Left => (player.position.0, player.position.1 - 1),
-            Action::Right => (player.position.0, player.position.1 + 1),
-            Action::Nothing => (player.position.0, player.position.1),
-        };
+        let (new_player, event) = run_simulation_step(&level, *player, *trigger.event());
+        *player = new_player;
 
-        match level.get(future_position) {
-            Some(Tile::Finish) => {
-                commands.trigger(LevelCompleted);
-            }
-            Some(Tile::Wall) => {
-                future_position = player.position;
-            }
-            Some(_) => {}
-            None => {
-                commands.trigger_targets(Death::Fell, entity);
-            }
-        }
         commands.trigger_targets(
             PlayerMove {
-                position: future_position,
+                position: player.position,
                 action: *trigger.event(),
             },
             entity,
         );
-        player.position = future_position;
+
+        match event {
+            Some(SimulationEvent::Finished) => commands.trigger(LevelCompleted),
+            Some(SimulationEvent::Died) => commands.trigger_targets(Death::Fell, entity),
+            None => {}
+        }
     }
 }
 
@@ -273,7 +261,7 @@ fn player_death(trigger: Trigger<Death>, mut commands: Commands, query: Query<&P
     let entity = trigger.entity();
     let player = *query.get(entity).unwrap();
 
-    commands.trigger(SimulationStop);
+    commands.trigger(SimulationPause);
 
     commands.spawn(DelayedCommand::new(0.5, move |commands| {
         commands.entity(entity).insert(Animator::new(Tween::new(
@@ -287,6 +275,7 @@ fn player_death(trigger: Trigger<Death>, mut commands: Commands, query: Query<&P
     }));
 
     commands.spawn(DelayedCommand::new(2., |commands| {
+        commands.trigger(SimulationStop);
         commands.trigger(RespawnPlayer);
     }));
 }
@@ -311,8 +300,9 @@ fn level_completed(
         }));
     }
 
-    commands.trigger(SimulationStop);
+    commands.trigger(SimulationPause);
     commands.spawn(DelayedCommand::new(2.1, move |commands| {
+        commands.trigger(SimulationStop);
         commands.trigger(RespawnPlayer);
     }));
 }

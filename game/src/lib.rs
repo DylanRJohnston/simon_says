@@ -1,4 +1,5 @@
 #![feature(trait_alias)]
+#![feature(stmt_expr_attributes)]
 
 pub mod actions;
 pub mod delayed_command;

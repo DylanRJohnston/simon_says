@@ -58,7 +58,7 @@ fn update_control_state(
     }
 
     for mut button in &mut play_button {
-        button.disabled = action_plan.is_empty() || *simulation_state == SimulationState::Running;
+        button.disabled = action_plan.is_empty() || *simulation_state != SimulationState::Stopped;
     }
 
     for mut button in &mut reset_button {

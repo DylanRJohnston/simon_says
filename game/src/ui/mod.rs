@@ -2,6 +2,7 @@ use action_list::ActionListPlugin;
 use action_menu::ActionMenuPlugin;
 use bevy::prelude::*;
 use button::ButtonPlugin;
+use challenges::ChallengePlugin;
 use constants::*;
 use controls::ControlsPlugin;
 use dialogue::DialoguePlugin;
@@ -13,6 +14,7 @@ use crate::{actions::AddAction, game_state::GameState, simulation::SimulationSta
 pub mod action_list;
 pub mod action_menu;
 pub mod button;
+pub mod challenges;
 pub mod constants;
 pub mod controls;
 pub mod dialogue;
@@ -28,6 +30,7 @@ impl Plugin for UIPlugin {
             .add_plugins(ActionMenuPlugin)
             .add_plugins(ControlsPlugin)
             .add_plugins(MainMenuPlugin)
+            .add_plugins(ChallengePlugin)
             .add_plugins(DialoguePlugin)
             .add_plugins(EndScreenPlugin)
             .add_systems(OnEnter(GameState::InGame), setup);
@@ -39,29 +42,44 @@ fn setup(mut commands: Commands) {
         .spawn(NodeBundle {
             style: Style {
                 height: Val::Percent(100.0),
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(UI_CONTAINER_GAP),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Start,
+                column_gap: Val::Px(UI_CONTAINER_GAP),
                 padding: UiRect::all(Val::Px(SCREEN_CONTAINER_PADDING)),
                 ..default()
             },
             ..default()
         })
-        .with_children(|container| {
-            ActionMenuPlugin::spawn_ui(container);
-
-            container
+        .with_children(|commands| {
+            commands
                 .spawn(NodeBundle {
                     style: Style {
-                        column_gap: Val::Px(UI_CONTAINER_GAP),
-                        align_items: AlignItems::Start,
+                        height: Val::Percent(100.0),
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(UI_CONTAINER_GAP),
                         ..default()
                     },
                     ..default()
                 })
                 .with_children(|container| {
-                    ActionListPlugin::spawn_ui(container);
-                    ControlsPlugin::spawn_controls(container);
+                    ActionMenuPlugin::spawn_ui(container);
+
+                    container
+                        .spawn(NodeBundle {
+                            style: Style {
+                                column_gap: Val::Px(UI_CONTAINER_GAP),
+                                align_items: AlignItems::Start,
+                                ..default()
+                            },
+                            ..default()
+                        })
+                        .with_children(|container| {
+                            ActionListPlugin::spawn_ui(container);
+                            ControlsPlugin::spawn_controls(container);
+                        });
                 });
+
+            ChallengePlugin::spawn_ui(commands);
         });
 }
 

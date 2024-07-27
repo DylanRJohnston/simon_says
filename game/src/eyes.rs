@@ -1,10 +1,14 @@
-use std::f32::consts::PI;
+use std::{
+    f32::consts::PI,
+    ops::{Deref, DerefMut},
+};
 
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, math::VectorSpace, prelude::*};
 
 use crate::{
     game_state::{GameState, TextureAssets},
     player::Player,
+    ui::dialogue::DialogueStarted,
 };
 
 pub struct EyesPlugin;
@@ -16,7 +20,14 @@ impl Plugin for EyesPlugin {
             .add_systems(Update, animate_eye_direction)
             .add_systems(Update, eye_emotion)
             .add_systems(Update, animate_emotion)
-            .observe(emotion_from_player_activity);
+            .add_systems(
+                Update,
+                animate_talking.run_if(|state: Res<State<GameState>>| {
+                    !matches!(state.get(), GameState::Loading)
+                }),
+            )
+            .observe(emotion_from_player_activity)
+            .observe(trigger_talking_animation);
     }
 }
 
@@ -116,6 +127,31 @@ const IRIS_CENTER: Vec3 = Vec3::new(-0.31, -0.28, 0.1);
 #[derive(Debug, Component, Default)]
 pub struct Iris;
 
+#[derive(Debug, Resource)]
+struct IrisMaterialHandle(Handle<StandardMaterial>);
+
+#[derive(Debug, Resource)]
+struct EyeMaterialHandle(Handle<StandardMaterial>);
+
+#[derive(SystemParam)]
+struct EyeMaterial<'w> {
+    eye_handle: Res<'w, EyeMaterialHandle>,
+    iris_handle: Res<'w, IrisMaterialHandle>,
+    materials: ResMut<'w, Assets<StandardMaterial>>,
+}
+
+impl<'w> EyeMaterial<'w> {
+    // This is safe because the handles are disjoin and the borrow is transmuted
+    // to the 'w lifetime ensuring it doesn't escape the system
+    fn eye_material(&mut self) -> &'w mut StandardMaterial {
+        unsafe { std::mem::transmute(self.materials.get_mut(&self.eye_handle.0).unwrap()) }
+    }
+
+    fn iris_material(&mut self) -> &'w mut StandardMaterial {
+        unsafe { std::mem::transmute(self.materials.get_mut(&self.iris_handle.0).unwrap()) }
+    }
+}
+
 fn spawn_eye(
     mut commands: Commands,
     textures: Res<TextureAssets>,
@@ -126,6 +162,7 @@ fn spawn_eye(
 
     let eye_material = material.add(StandardMaterial {
         base_color_texture: Some(textures.eye.clone()),
+        base_color: Color::BLACK,
         alpha_mode: AlphaMode::Blend,
         unlit: true,
         ..default()
@@ -133,10 +170,14 @@ fn spawn_eye(
 
     let iris_material = material.add(StandardMaterial {
         base_color_texture: Some(textures.iris.clone()),
+        base_color: Color::BLACK,
         alpha_mode: AlphaMode::Blend,
-        reflectance: 0.0,
+        unlit: true,
         ..default()
     });
+
+    commands.insert_resource(EyeMaterialHandle(eye_material.clone()));
+    commands.insert_resource(IrisMaterialHandle(iris_material.clone()));
 
     for (x, y, z) in [(3.0, 2.0, -6.0), (9.0, -1.0, -3.0), (-3.0, 1.0, -6.0)] {
         commands
@@ -228,6 +269,7 @@ fn random_boredom_target(position: Vec3, wander: f32) -> Vec3 {
 fn eye_emotion(
     mut eye: Query<(&mut Eye, &mut Emotion)>,
     players: Query<&Transform, With<Player>>,
+    camera: Query<&Transform, With<Camera>>,
     time: Res<Time>,
     mut neutral_count: Local<usize>,
 ) {
@@ -235,7 +277,12 @@ fn eye_emotion(
         .iter()
         .next()
         .map(|it| it.translation)
-        .unwrap_or(Vec3::ZERO);
+        .unwrap_or_else(|| {
+            camera
+                .get_single()
+                .map(|it| it.translation)
+                .unwrap_or(Vec3::ZERO)
+        });
 
     for (mut eye, mut emotion) in &mut eye {
         match emotion.as_mut() {
@@ -271,11 +318,12 @@ fn eye_emotion(
                 *emotion = Emotion::focused();
             }
             Emotion::Focused(timer) => {
+                eye.target = player_position;
+
                 if !timer.tick(time.delta()).just_finished() {
                     continue;
                 }
 
-                eye.target = player_position;
                 *emotion = Emotion::neutral();
             }
         }
@@ -310,5 +358,64 @@ fn animate_emotion(
             Vec3::ONE * emotion.dilation(),
             time.delta_seconds() * emotion.emotion_speed(),
         );
+    }
+}
+
+#[derive(Debug, Resource, Deref, DerefMut)]
+struct TalkingTimer(Timer);
+
+#[derive(Debug, Resource, Deref, DerefMut)]
+struct ChangeColorTimer(Timer);
+
+fn trigger_talking_animation(
+    _trigger: Trigger<DialogueStarted>,
+    mut commands: Commands,
+    mut eye: Query<&mut Emotion>,
+) {
+    commands.insert_resource(TalkingTimer(Timer::from_seconds(3.5, TimerMode::Once)));
+    commands.insert_resource(ChangeColorTimer(Timer::from_seconds(0., TimerMode::Once)));
+    for mut emotion in &mut eye {
+        match emotion.as_mut() {
+            Emotion::Focused(timer) => timer.reset(),
+            Emotion::Bored(_) | Emotion::Neutral(_) => *emotion = Emotion::focused(),
+            _ => {}
+        }
+    }
+}
+
+fn animate_talking(
+    talking_timer: Option<ResMut<TalkingTimer>>,
+    change_color_timer: Option<ResMut<ChangeColorTimer>>,
+    mut eye_material: EyeMaterial,
+    time: Res<Time>,
+) {
+    if talking_timer.is_none() || change_color_timer.is_none() {
+        return;
+    }
+
+    let mut talking_timer = talking_timer.unwrap();
+    let mut change_color_timer = change_color_timer.unwrap();
+
+    if talking_timer.0.finished() {
+        return;
+    }
+
+    let eye = eye_material.eye_material();
+    let iris = eye_material.iris_material();
+
+    if talking_timer.tick(time.delta()).just_finished() {
+        eye.base_color = Color::BLACK;
+        iris.base_color = Color::BLACK;
+        return;
+    }
+
+    if change_color_timer.tick(time.delta()).just_finished() {
+        // eye_material.base_color =
+        //     Color::hsv(talking_timer.remaining_secs() * 360. * 3. % 360., 1.0, 1.0);
+        let color = Color::hsv(rand::random::<f32>() * 360.0, 1.0, 1.0);
+        eye.base_color = color;
+        iris.base_color = Color::hsv(rand::random::<f32>() * 360.0, 1.0, 1.0);
+
+        *change_color_timer = ChangeColorTimer(Timer::from_seconds(0.05, TimerMode::Once));
     }
 }

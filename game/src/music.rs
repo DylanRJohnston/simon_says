@@ -58,7 +58,7 @@ fn play_game_music(
         .play(music.where_am_i.clone())
         .with_volume(DEFAULT_MUSIC_VOLUME)
         .fade_in(AudioTween::new(
-            Duration::from_secs_f32(10.),
+            Duration::from_secs_f32(2.),
             AudioEasing::OutPowi(2),
         ))
         .handle();

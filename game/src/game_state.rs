@@ -57,7 +57,7 @@ pub struct SoundAssets {
         paths(
             "sounds/simon_dialogue_long_1.ogg",
             "sounds/simon_dialogue_long_2.ogg",
-            "sounds/simon_dialogue_long_3.ogg",
+            // "sounds/simon_dialogue_long_3.ogg",
             "sounds/simon_dialogue_long_4.ogg",
             "sounds/simon_dialogue_long_5.ogg",
             "sounds/simon_dialogue_long_6.ogg",

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::player::LevelCompleted;
+use crate::{level::LoadNextLevel, player::LevelCompleted};
 
 pub struct ActionPlugin;
 
@@ -196,7 +196,7 @@ fn remove_action(trigger: Trigger<RemoveAction>, mut action_plan: ResMut<ActionP
     action_plan.remove(index);
 }
 
-fn reset_action_plan(_trigger: Trigger<LevelCompleted>, mut action_plan: ResMut<ActionPlan>) {
+fn reset_action_plan(_trigger: Trigger<LoadNextLevel>, mut action_plan: ResMut<ActionPlan>) {
     action_plan.clear();
 }
 

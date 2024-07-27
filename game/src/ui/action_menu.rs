@@ -109,6 +109,6 @@ fn plan_is_full(
     let full = action_plan.len() >= level.action_limit;
 
     for mut button in &mut buttons {
-        button.disabled = full || simulation.get() == &SimulationState::Running;
+        button.disabled = full || simulation.get() != &SimulationState::Stopped;
     }
 }

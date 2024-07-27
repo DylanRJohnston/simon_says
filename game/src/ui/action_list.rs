@@ -7,7 +7,7 @@ use crate::{
     simulation::{SimulationProgramCounter, SimulationState},
 };
 
-use super::{button, constants::*, horizontal_line};
+use super::{button, challenges::StepCount, constants::*, horizontal_line};
 
 pub struct ActionListPlugin;
 
@@ -58,6 +58,7 @@ pub struct ReorderButton {
     pub disabled: bool,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update_action_list(
     mut commands: Commands,
     query: Query<Entity, With<ActionPlanUI>>,
@@ -67,11 +68,13 @@ fn update_action_list(
     level: Res<Level>,
     simulation_state: Res<State<SimulationState>>,
     program_counter: Res<SimulationProgramCounter>,
+    step_count: Res<StepCount>,
 ) {
     if !(action_plan.is_changed()
         || level.is_changed()
         || simulation_state.is_changed()
-        || program_counter.is_changed())
+        || program_counter.is_changed()
+        || step_count.is_changed())
     {
         return;
     }
@@ -101,9 +104,14 @@ fn update_action_list(
                 },
                 text: Text::from_section(
                     format!(
-                        "max {max} command{plural}",
+                        "max {max} command{plural}{trailing}",
                         max = level.action_limit,
-                        plural = if level.action_limit == 1 { "" } else { "s" }
+                        plural = if level.action_limit == 1 { "" } else { "s" },
+                        trailing = if **step_count > 0 {
+                            format!("; {} steps", **step_count)
+                        } else {
+                            "".into()
+                        }
                     ),
                     TextStyle {
                         color: *PRIMARY_TEXT_COLOR,
@@ -131,7 +139,7 @@ fn update_action_list(
             }
 
             for (index, action) in action_plan.iter().enumerate() {
-                let prevent_interactions = simulation_state.get() == &SimulationState::Running;
+                let prevent_interactions = simulation_state.get() != &SimulationState::Stopped;
 
                 let background_color = if program_counter.0 == index && prevent_interactions {
                     (*GHOST_TEXT_COLOR).into()
