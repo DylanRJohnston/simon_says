@@ -85,8 +85,6 @@ fn update_available_actions(
                         button::Button::builder()
                             .text(action.into())
                             .on_click(Box::new(move |commands, _| {
-                                tracing::info!("Triggering add action");
-
                                 commands.trigger(AddAction(action))
                             }))
                             .build(action_row)

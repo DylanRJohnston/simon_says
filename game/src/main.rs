@@ -5,6 +5,7 @@ use bevy_firework::plugin::ParticleSystemPlugin;
 use bevy_tweening::TweeningPlugin;
 use game::game_state::GameStatePlugin;
 use game::music::MusicPlugin;
+use game::video_glitch::VideoGlitchPlugin;
 use game::{
     actions::ActionPlugin, delayed_command::DelayedCommandPlugin, eyes::EyesPlugin,
     level::LevelPlugin, player::PlayerPlugin, simulation::SimulationPlugin, ui::UIPlugin,
@@ -45,6 +46,7 @@ fn main() {
     .add_plugins(EyesPlugin)
     .add_plugins(ParticleSystemPlugin)
     .add_plugins(MusicPlugin)
+    .add_plugins(VideoGlitchPlugin)
     // .insert_resource(ClearColor(Color::srgb_u8(0x33, 0x3c, 0x57)))
     .insert_resource(ClearColor(Color::srgb_u8(0xdd, 0xdd, 0xdd)))
     .insert_resource(AmbientLight {
@@ -87,5 +89,9 @@ fn setup(mut commands: Commands) {
         },
         IsDefaultUiCamera,
         Fxaa::default(),
+        bevy_video_glitch::VideoGlitchSettings {
+            intensity: 0.,
+            color_aberration: Mat3::IDENTITY,
+        },
     ));
 }

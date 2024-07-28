@@ -32,6 +32,7 @@ pub enum GameState {
     Loading,
     MainMenu,
     InGame,
+    Paused,
 }
 
 #[derive(AssetCollection, Resource)]
@@ -44,6 +45,12 @@ pub struct MusicAssets {
 
     #[asset(path = "music/anachronism.ogg")]
     pub anachronism: Handle<AudioSource>,
+
+    #[asset(path = "music/change_level.ogg")]
+    pub change_level: Handle<AudioSource>,
+
+    #[asset(path = "music/pause_music.ogg")]
+    pub pause_music: Handle<AudioSource>,
     // #[asset(path = "music/didact.ogg")]
     // pub didact: Handle<AudioSource>,
 }
@@ -68,6 +75,9 @@ pub struct SoundAssets {
         collection(typed)
     )]
     pub dialogue: Vec<Handle<AudioSource>>,
+
+    #[asset(path = "sounds/death_glitch.ogg")]
+    pub death_glitch: Handle<AudioSource>,
 }
 
 #[derive(AssetCollection, Resource)]

@@ -7,7 +7,7 @@ use crate::{
     delayed_command::DelayedCommand,
     game_state::{GameState, SoundAssets},
     level::LoadNextLevel,
-    music::SuppressMusicVolume,
+    music::{DialogueChannel, SuppressMusicVolume},
 };
 
 use super::{main_menu::Refuse, UI_BACKGROUND_COLOR, UI_CONTAINER_PADDING, UI_CONTAINER_RADIUS};
@@ -16,7 +16,7 @@ pub struct DialoguePlugin;
 
 impl Plugin for DialoguePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::InGame), game_start)
+        app.add_systems(OnExit(GameState::MainMenu), game_start)
             .insert_resource(DialogueQueue(Vec::new()))
             .add_systems(
                 Update,
@@ -88,7 +88,7 @@ pub struct DialogueStarted;
 fn play_dialogue_segment(
     mut dialogue_queue: ResMut<DialogueQueue>,
     mut commands: Commands,
-    audio: Res<Audio>,
+    audio: Res<AudioChannel<DialogueChannel>>,
     sounds: Res<SoundAssets>,
     mut count: Local<usize>,
     mut timer: Local<Timer>,

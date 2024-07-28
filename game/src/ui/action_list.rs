@@ -276,18 +276,14 @@ fn reorder_button(
             Interaction::Hovered => {
                 image.color = *BUTTON_COLOR;
             }
-            Interaction::Pressed => {
-                tracing::info!(?entity, ?interaction, ?button.button_type,  "button pressed");
-
-                match button.button_type {
-                    ButtonType::Up => {
-                        action_plan.swap(button.index, button.index - 1);
-                    }
-                    ButtonType::Down => {
-                        action_plan.swap(button.index, button.index + 1);
-                    }
+            Interaction::Pressed => match button.button_type {
+                ButtonType::Up => {
+                    action_plan.swap(button.index, button.index - 1);
                 }
-            }
+                ButtonType::Down => {
+                    action_plan.swap(button.index, button.index + 1);
+                }
+            },
         }
     }
 }

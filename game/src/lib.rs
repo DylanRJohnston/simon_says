@@ -10,3 +10,4 @@ pub mod music;
 pub mod player;
 pub mod simulation;
 pub mod ui;
+pub mod video_glitch;

@@ -3,7 +3,8 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use crate::{
     actions::{Action, ActionPlan},
     level::{self, Level, LevelCounter, SCENES},
-    player::LevelCompleted, simulation::SimulationStop,
+    player::LevelCompleted,
+    simulation::SimulationStop,
 };
 
 use super::*;
@@ -49,6 +50,7 @@ pub struct ChallengeRecord {
     pub commands: Option<bool>,
     pub steps: Option<bool>,
     pub waste: Option<bool>,
+    pub level_completed: bool,
 }
 
 #[derive(Debug, Clone, Resource, Deref, DerefMut)]
@@ -84,6 +86,7 @@ fn init_challenge_state(mut commands: Commands) {
                         commands: level.command_challenge.is_some().then_some(false),
                         steps: level.step_challenge.is_some().then_some(false),
                         waste: level.waste_challenge.is_some().then_some(false),
+                        level_completed: false,
                     }
                 } else {
                     ChallengeRecord::default()
@@ -93,7 +96,6 @@ fn init_challenge_state(mut commands: Commands) {
     ));
     commands.insert_resource(StepCount(0));
 }
-
 
 #[derive(Debug, Clone, Copy, Resource, Deref, DerefMut)]
 pub struct StepCount(usize);
@@ -109,13 +111,13 @@ fn update_challenges(
     _trigger: Trigger<LevelCompleted>,
     mut challenge: ActiveChallenge,
     action_plan: Res<ActionPlan>,
-    mut step_count: ResMut<StepCount>,
+    step_count: Res<StepCount>,
     level: Res<Level>,
 ) {
     if let Some(challenge) = challenge.get_record_mut() {
-        if let Some(command_challenge) =  level.command_challenge {
-            tracing::info!(length = ?action_plan.len(), "action_plan_length");
+        challenge.level_completed = true;
 
+        if let Some(command_challenge) = level.command_challenge {
             if action_plan.len() <= command_challenge {
                 if let Some(completed) = &mut challenge.commands {
                     *completed = true;
@@ -123,7 +125,7 @@ fn update_challenges(
             }
         }
 
-        if let Some(step_challenge) =  level.step_challenge {
+        if let Some(step_challenge) = level.step_challenge {
             if **step_count <= step_challenge {
                 if let Some(completed) = &mut challenge.steps {
                     *completed = true;
@@ -131,7 +133,7 @@ fn update_challenges(
             }
         }
 
-        if let Some(waste_challenge) =  level.waste_challenge {
+        if let Some(waste_challenge) = level.waste_challenge {
             if **step_count >= waste_challenge {
                 if let Some(completed) = &mut challenge.waste {
                     *completed = true;
@@ -191,12 +193,7 @@ fn update_challenge_ui(
                                 ..default()
                             },
                             border_radius: BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
-                            border_color: 
-                            // if completed {
-                            //     success_color.into()
-                            // } else {
-                                (*PRIMARY_TEXT_COLOR).into(),
-                            // },
+                            border_color: (*PRIMARY_TEXT_COLOR).into(),
                             background_color: if completed {
                                 success_color.into()
                             } else {
@@ -206,14 +203,17 @@ fn update_challenge_ui(
                         });
 
                         container.spawn(TextBundle {
-                            text: Text::from_section(text, TextStyle {
-                                color: if completed {
-                                    *GHOST_TEXT_COLOR
-                                } else {
-                                    *PRIMARY_TEXT_COLOR
+                            text: Text::from_section(
+                                text,
+                                TextStyle {
+                                    color: if completed {
+                                        *GHOST_TEXT_COLOR
+                                    } else {
+                                        *PRIMARY_TEXT_COLOR
+                                    },
+                                    ..default()
                                 },
-                                ..default()
-                            }),
+                            ),
                             ..default()
                         });
                     });

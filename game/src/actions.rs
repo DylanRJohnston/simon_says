@@ -178,7 +178,6 @@ impl ActionPlan {
 }
 
 fn add_action(trigger: Trigger<AddAction>, mut action_plan: ResMut<ActionPlan>) {
-    tracing::info!("reacting to add action");
     action_plan.push(**trigger.event())
 }
 

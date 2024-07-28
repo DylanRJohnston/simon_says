@@ -8,7 +8,7 @@ pub struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::MainMenu), setup)
+        app.add_systems(OnExit(GameState::Loading), setup)
             .observe(start_game)
             .observe(remove_ui)
             .observe(spawn_main_menu)

@@ -15,7 +15,7 @@ pub struct EyesPlugin;
 
 impl Plugin for EyesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::MainMenu), spawn_eye)
+        app.add_systems(OnExit(GameState::Loading), spawn_eye)
             .add_systems(Update, eye_track_player)
             .add_systems(Update, animate_eye_direction)
             .add_systems(Update, eye_emotion)

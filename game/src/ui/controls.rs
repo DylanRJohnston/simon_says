@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     actions::ActionPlan,
-    player::RespawnPlayer,
+    player::SpawnPlayer,
     simulation::{SimulationState, SimulationStop},
 };
 
@@ -29,7 +29,7 @@ impl ControlsPlugin {
             .background_color(*BUTTON_CANCEL_COLOR)
             .on_click(Box::new(|commands, _entity| {
                 commands.trigger(SimulationStop);
-                commands.trigger(RespawnPlayer);
+                commands.trigger(SpawnPlayer);
             }))
             .disabled()
             .build(container)

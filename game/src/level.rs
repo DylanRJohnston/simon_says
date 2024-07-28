@@ -11,7 +11,7 @@ use crate::{
     actions::Action,
     delayed_command::{DelayedCommand, DelayedCommandExt},
     game_state::GameState,
-    player::{LevelCompleted, RespawnPlayer},
+    player::{LevelCompleted, SpawnPlayer},
     ui::{
         challenges::{ActiveChallenge, ChallengeRecord, ChallengeState},
         constants::BUTTON_SUCCESS_COLOR,
@@ -26,7 +26,9 @@ impl Plugin for LevelPlugin {
         app.add_systems(Startup, setup)
             .add_systems(Update, spawn_level.run_if(in_state(GameState::InGame)))
             .observe(level_completed)
-            .observe(load_next_level);
+            .observe(load_next_level)
+            .observe(despawn_level)
+            .observe(load_level);
     }
 }
 
@@ -547,7 +549,7 @@ fn spawn_level(
             }
         });
 
-    commands.trigger(RespawnPlayer);
+    commands.trigger(SpawnPlayer);
 }
 
 #[derive(Debug, Event)]
@@ -555,6 +557,22 @@ pub struct GameFinished;
 
 fn level_completed(
     _trigger: Trigger<LevelCompleted>,
+    mut commands: Commands,
+    level_root: Query<(Entity, &Children), With<LevelRoot>>,
+    tiles: Query<&Transform, With<Tile>>,
+) {
+    commands.trigger(DespawnLevel);
+
+    commands.spawn(DelayedCommand::new(2., move |commands| {
+        commands.trigger(LoadNextLevel);
+    }));
+}
+
+#[derive(Debug, Event)]
+pub struct DespawnLevel;
+
+fn despawn_level(
+    _trigger: Trigger<DespawnLevel>,
     mut commands: Commands,
     level_root: Query<(Entity, &Children), With<LevelRoot>>,
     tiles: Query<&Transform, With<Tile>>,
@@ -576,7 +594,6 @@ fn level_completed(
 
     commands.spawn(DelayedCommand::new(2., move |commands| {
         commands.entity(level_root).despawn_recursive();
-        commands.trigger(LoadNextLevel);
     }));
 }
 
@@ -620,7 +637,6 @@ fn load_next_level(
             commands.trigger(LoadNextLevel);
         }
         Some(Scene::Finish) | None => {
-            tracing::info!("game finished");
             *level = LevelBuilder::new()
                 .action_limit(0)
                 .insert([((0, 0), Tile::Start)])
@@ -647,5 +663,24 @@ impl CurrentScene<'_> {
             Some(scene) => scene.clone(),
             None => Scene::Finish,
         }
+    }
+}
+
+#[derive(Debug, Event)]
+pub struct LoadLevel(pub usize);
+
+fn load_level(
+    trigger: Trigger<LoadLevel>,
+    mut level_counter: ResMut<LevelCounter>,
+    mut level: ResMut<Level>,
+) {
+    let id = trigger.event().0;
+
+    **level_counter = id;
+    match (*SCENES).get(id) {
+        Some(Scene::Level(next_level)) => {
+            *level = next_level.clone();
+        }
+        other => tracing::warn!(?other, "tried to force loading on non level scene"),
     }
 }

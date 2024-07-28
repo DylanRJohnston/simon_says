@@ -36,7 +36,7 @@ impl Plugin for UIPlugin {
             .add_plugins(DialoguePlugin)
             .add_plugins(EndScreenPlugin)
             .add_plugins(SettingsPlugin)
-            .add_systems(OnEnter(GameState::InGame), setup);
+            .add_systems(OnExit(GameState::MainMenu), setup);
     }
 }
 

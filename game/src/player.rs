@@ -1,6 +1,7 @@
 use std::{f32::consts::PI, time::Duration};
 
 use bevy::{prelude::*, render::view::NoFrustumCulling, tasks::futures_lite::future};
+use bevy_kira_audio::{AudioChannel, AudioControl};
 use bevy_tweening::{
     lens::{TransformPositionLens, TransformRotationLens},
     Animator, EaseFunction, Sequence, Tracks, Tween, Tweenable,
@@ -8,9 +9,10 @@ use bevy_tweening::{
 
 use crate::{
     actions::Action,
-    delayed_command::DelayedCommand,
-    game_state::{GameState, ModelAssets},
+    delayed_command::{DelayedCommand, DelayedCommandExt},
+    game_state::{GameState, ModelAssets, SoundAssets},
     level::{Level, Tile},
+    music::EffectChannel,
     simulation::{run_simulation_step, SimulationEvent, SimulationPause, SimulationStop},
 };
 
@@ -18,14 +20,15 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(respawn_player)
+        app.observe(spawn_player)
             .observe(attempt_action)
             .observe(player_death)
             .observe(level_completed)
             .observe(animate_player_movement)
+            .observe(despawn_player)
+            .observe(play_player_death_sound)
             .add_systems(Update, uncullable_mesh)
-            .add_systems(Update, debug_keyboard_move_forward)
-            .add_systems(OnEnter(GameState::MainMenu), pre_instance_player_mesh);
+            .add_systems(OnExit(GameState::Loading), pre_instance_player_mesh);
     }
 }
 
@@ -72,11 +75,7 @@ fn uncullable_mesh(
     root_query: Query<Entity, With<Uncullable>>,
 ) {
     for mesh in &mesh {
-        tracing::info!("found new mesh");
-
         if has_uncullable_parent(mesh, &root_query, &parents) {
-            tracing::info!("mesh shouldnt be culled");
-
             commands
                 .entity(mesh)
                 .insert((Name::new("unculled_mesh"), NoFrustumCulling));
@@ -110,12 +109,12 @@ impl<'a> From<&'a Player> for Vec3 {
 }
 
 #[derive(Debug, Event)]
-pub struct RespawnPlayer;
+pub struct SpawnPlayer;
 
 const PLAYER_Y_OFFSET: f32 = 0.5;
 
-pub fn respawn_player(
-    _event: Trigger<RespawnPlayer>,
+pub fn spawn_player(
+    _event: Trigger<SpawnPlayer>,
     mesh: Res<ModelAssets>,
     // material: Res<PlayerMaterial>,
     players: Query<Entity, With<Player>>,
@@ -156,13 +155,6 @@ pub fn respawn_player(
     ));
 }
 
-pub fn debug_keyboard_move_forward(keys: Res<ButtonInput<KeyCode>>, mut commands: Commands) {
-    if keys.just_pressed(KeyCode::Space) {
-        tracing::info!("space bar pressed");
-        commands.trigger(Action::Forward);
-    }
-}
-
 #[derive(Debug, Event)]
 pub struct PlayerMove {
     position: (i32, i32),
@@ -174,8 +166,6 @@ fn animate_player_movement(
     players: Query<&Transform>,
     mut commands: Commands,
 ) {
-    tracing::info!(player_move = ?trigger.event(), "moving player");
-
     let entity = trigger.entity();
     let player = players.get(entity).unwrap();
 
@@ -255,15 +245,29 @@ pub enum Death {
     Fell,
 }
 
-fn player_death(trigger: Trigger<Death>, mut commands: Commands, query: Query<&Player>) {
-    tracing::info!(reason = ?trigger.event(), "player died");
+#[derive(Debug, Event)]
+struct PlayPlayerDeathSound;
 
+fn play_player_death_sound(
+    _trigger: Trigger<PlayPlayerDeathSound>,
+    sounds: Res<SoundAssets>,
+    effect_channel: Res<AudioChannel<EffectChannel>>,
+) {
+    effect_channel
+        .play(sounds.death_glitch.clone())
+        .with_volume(0.2)
+        .with_playback_rate(0.8 + rand::random::<f64>() * 0.4);
+}
+
+fn player_death(trigger: Trigger<Death>, mut commands: Commands, query: Query<&Player>) {
     let entity = trigger.entity();
     let player = *query.get(entity).unwrap();
 
     commands.trigger(SimulationPause);
 
-    commands.spawn(DelayedCommand::new(0.5, move |commands| {
+    commands.delayed(1.3, |commands| commands.trigger(PlayPlayerDeathSound));
+
+    commands.delayed(0.5, move |commands| {
         commands.entity(entity).insert(Animator::new(Tween::new(
             EaseFunction::QuadraticIn,
             Duration::from_secs_f32(1.0),
@@ -272,16 +276,19 @@ fn player_death(trigger: Trigger<Death>, mut commands: Commands, query: Query<&P
                 end: Vec3::from(player) + Vec3::Y * -20.,
             },
         )));
-    }));
+    });
 
-    commands.spawn(DelayedCommand::new(2., |commands| {
+    commands.delayed(2., |commands| {
         commands.trigger(SimulationStop);
-        commands.trigger(RespawnPlayer);
-    }));
+        commands.trigger(SpawnPlayer);
+    });
 }
 
-fn level_completed(
-    _trigger: Trigger<LevelCompleted>,
+#[derive(Debug, Event)]
+pub struct DespawnPlayer;
+
+fn despawn_player(
+    _trigger: Trigger<DespawnPlayer>,
     mut commands: Commands,
     players: Query<(Entity, &Player)>,
 ) {
@@ -299,11 +306,18 @@ fn level_completed(
             )));
         }));
     }
+}
 
+fn level_completed(
+    _trigger: Trigger<LevelCompleted>,
+    mut commands: Commands,
+    players: Query<(Entity, &Player)>,
+) {
+    commands.trigger(DespawnPlayer);
     commands.trigger(SimulationPause);
     commands.spawn(DelayedCommand::new(2.1, move |commands| {
         commands.trigger(SimulationStop);
-        commands.trigger(RespawnPlayer);
+        commands.trigger(SpawnPlayer);
     }));
 }
 
