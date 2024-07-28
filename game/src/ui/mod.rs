@@ -8,6 +8,7 @@ use controls::ControlsPlugin;
 use dialogue::DialoguePlugin;
 use end_screen::EndScreenPlugin;
 use main_menu::MainMenuPlugin;
+use settings::SettingsPlugin;
 
 use crate::{actions::AddAction, game_state::GameState, simulation::SimulationStart};
 
@@ -20,6 +21,7 @@ pub mod controls;
 pub mod dialogue;
 pub mod end_screen;
 pub mod main_menu;
+pub mod settings;
 
 pub struct UIPlugin;
 
@@ -33,6 +35,7 @@ impl Plugin for UIPlugin {
             .add_plugins(ChallengePlugin)
             .add_plugins(DialoguePlugin)
             .add_plugins(EndScreenPlugin)
+            .add_plugins(SettingsPlugin)
             .add_systems(OnEnter(GameState::InGame), setup);
     }
 }

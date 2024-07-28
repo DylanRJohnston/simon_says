@@ -12,7 +12,11 @@ use crate::{
     delayed_command::{DelayedCommand, DelayedCommandExt},
     game_state::GameState,
     player::{LevelCompleted, RespawnPlayer},
-    ui::constants::BUTTON_SUCCESS_COLOR,
+    ui::{
+        challenges::{ActiveChallenge, ChallengeRecord, ChallengeState},
+        constants::BUTTON_SUCCESS_COLOR,
+        settings::GameMode,
+    },
 };
 
 pub struct LevelPlugin;
@@ -587,7 +591,21 @@ fn load_next_level(
     mut commands: Commands,
     mut level: ResMut<Level>,
     mut level_counter: ResMut<LevelCounter>,
+    challenges: Res<ChallengeState>,
+    game_mode: Res<GameMode>,
 ) {
+    if *game_mode == GameMode::Challenge {
+        let challenges = challenges[**level_counter];
+
+        match (challenges.commands, challenges.steps, challenges.waste) {
+            (Some(false), _, _) | (_, Some(false), _) | (_, _, Some(false)) => {
+                *level = level.clone();
+                return;
+            }
+            _ => {}
+        }
+    }
+
     **level_counter += 1;
 
     match (*SCENES).get(**level_counter) {

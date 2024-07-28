@@ -95,4 +95,7 @@ pub struct IconAssets {
 
     #[asset(path = "icons/down.png")]
     pub down: Handle<Image>,
+
+    #[asset(path = "icons/bars.png")]
+    pub bars: Handle<Image>,
 }

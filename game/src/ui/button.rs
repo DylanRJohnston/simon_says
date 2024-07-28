@@ -1,4 +1,4 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::{ecs::system::EntityCommands, prelude::*, ui::FocusPolicy};
 
 use super::{
     constants::{BUTTON_BORDER_THICKNESS, BUTTON_COLOR, PRIMARY_TEXT_COLOR},
@@ -75,6 +75,10 @@ impl ButtonBuilder {
     }
 
     pub fn build<'a>(self, parent: &'a mut ChildBuilder) -> EntityCommands<'a> {
+        if self.on_click.is_none() {
+            panic!("Button must have an on_click callback.");
+        }
+
         let mut commands = parent.spawn((
             Name::from("Button"),
             Button {
