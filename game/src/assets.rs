@@ -80,6 +80,9 @@ pub struct TextureAssets {
 
     #[asset(path = "textures/iris.png")]
     pub iris: Handle<Image>,
+
+    #[asset(path = "textures/cw_rot.png")]
+    pub cw_rot: Handle<Image>,
 }
 
 #[derive(AssetCollection, Resource)]

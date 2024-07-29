@@ -81,7 +81,7 @@ fn create_settings_ui(
     mut commands: Commands,
     game_mode: Res<GameMode>,
     icons: Res<IconAssets>,
-    challenges: Res<ChallengeState>,
+    mut challenges: ResMut<ChallengeState>,
     level_counter: Res<LevelCounter>,
     master_volume: Res<MasterVolume>,
     mut game_state: ResMut<NextState<GameState>>,
@@ -246,7 +246,7 @@ fn create_settings_ui(
                         .spawn(NodeBundle {
                             style: Style {
                                 display: Display::Grid,
-                                grid_template_columns: vec![RepeatedGridTrack::fr(4, 1.)],
+                                grid_template_columns: vec![RepeatedGridTrack::fr(5, 1.)],
                                 grid_auto_rows: vec![GridTrack::fr(1.)],
                                 row_gap: Val::Px(UI_CONTAINER_GAP),
                                 column_gap: Val::Px(UI_CONTAINER_GAP),
@@ -258,16 +258,18 @@ fn create_settings_ui(
                             let success_color = Color::srgba_u8(0x0c, 0xc4, 0x0f, 0xdd);
                             let incomplete_color = Color::srgb_u8(0x41, 0x53, 0x69);
 
-                            for (index, (level, challenge)) in
-                                SCENES.iter().zip(challenges.iter()).enumerate().filter_map(
-                                    |(index, (scene, challenge))| match scene {
-                                        crate::level::Scene::Level(level) => {
-                                            Some((index, (level, challenge)))
-                                        }
+                            for (index, level) in
+                                SCENES
+                                    .iter()
+                                    .enumerate()
+                                    .filter_map(|(index, scene)| match scene {
+                                        crate::level::Scene::Level(level) => Some((index, level)),
                                         _ => None,
-                                    },
-                                )
+                                    })
                             {
+                                let challenge =
+                                    challenges.entry(level.name.to_string()).or_default();
+
                                 container
                                     .spawn((
                                         LevelCard(index),

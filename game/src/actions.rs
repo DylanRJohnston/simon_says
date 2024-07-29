@@ -20,15 +20,44 @@ pub enum Action {
     Right,
     Backward,
     Left,
-    Nothing,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum CWRotation {
+    #[default]
     Zero,
     Ninety,
     OneEighty,
     TwoSeventy,
+}
+
+impl CWRotation {
+    pub fn rotate_cw(self) -> Self {
+        match self {
+            CWRotation::Zero => CWRotation::Ninety,
+            CWRotation::Ninety => CWRotation::OneEighty,
+            CWRotation::OneEighty => CWRotation::TwoSeventy,
+            CWRotation::TwoSeventy => CWRotation::Zero,
+        }
+    }
+
+    pub fn rotate_ccw(self) -> Self {
+        match self {
+            CWRotation::Zero => CWRotation::TwoSeventy,
+            CWRotation::Ninety => CWRotation::Zero,
+            CWRotation::OneEighty => CWRotation::Ninety,
+            CWRotation::TwoSeventy => CWRotation::OneEighty,
+        }
+    }
+
+    pub fn to_quat(self) -> Quat {
+        match self {
+            CWRotation::Zero => Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+            CWRotation::Ninety => Quat::IDENTITY,
+            CWRotation::OneEighty => Quat::from_rotation_y(-std::f32::consts::FRAC_PI_2),
+            CWRotation::TwoSeventy => Quat::from_rotation_y(-std::f32::consts::PI),
+        }
+    }
 }
 
 impl CWRotation {
@@ -49,7 +78,6 @@ impl std::fmt::Display for Action {
             Action::Right => write!(f, "→"),
             Action::Backward => write!(f, "↓"),
             Action::Left => write!(f, "←"),
-            Action::Nothing => write!(f, "N/A"),
         }
     }
 }
@@ -61,7 +89,6 @@ impl Action {
             Action::Right => Action::Backward,
             Action::Backward => Action::Left,
             Action::Left => Action::Forward,
-            Action::Nothing => Action::Nothing,
         }
     }
 
@@ -71,7 +98,6 @@ impl Action {
             Action::Right => Action::Forward,
             Action::Backward => Action::Right,
             Action::Left => Action::Backward,
-            Action::Nothing => Action::Nothing,
         }
     }
 
@@ -81,7 +107,6 @@ impl Action {
             Action::Right => Action::Left,
             Action::Backward => Action::Forward,
             Action::Left => Action::Right,
-            Action::Nothing => Action::Nothing,
         }
     }
 
@@ -103,7 +128,6 @@ impl Action {
             (Action::Left, Action::Right) => CWRotation::OneEighty,
             (Action::Left, Action::Backward) => CWRotation::TwoSeventy,
             (Action::Left, Action::Left) => CWRotation::Zero,
-            (_, _) => CWRotation::Zero,
         }
     }
 }
@@ -115,7 +139,6 @@ impl From<Action> for String {
             Action::Backward => "Backward".into(),
             Action::Left => "Left".into(),
             Action::Right => "Right".into(),
-            Action::Nothing => "N/A".into(),
         }
     }
 }
@@ -150,7 +173,7 @@ impl ActionPlan {
         ActionPlan(
             self.iter()
                 .map(|action| match action {
-                    action @ (Action::Forward | Action::Backward | Action::Nothing) => *action,
+                    action @ (Action::Forward | Action::Backward) => *action,
                     Action::Left => Action::Right,
                     Action::Right => Action::Left,
                 })

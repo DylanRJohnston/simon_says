@@ -8,7 +8,7 @@ use bevy_tweening::{
 };
 
 use crate::{
-    actions::Action,
+    actions::{Action, CWRotation},
     assets::{ModelAssets, SoundAssets},
     delayed_command::{DelayedCommand, DelayedCommandExt},
     game_state::GameState,
@@ -87,6 +87,7 @@ fn uncullable_mesh(
 #[derive(Debug, Component, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Player {
     pub position: (i32, i32),
+    pub rotation: CWRotation,
 }
 
 impl From<Player> for Vec3 {
@@ -126,39 +127,47 @@ pub fn spawn_player(
         commands.entity(player).despawn_recursive();
     }
 
-    let (start, _) = level
+    level
         .tiles
         .iter()
-        .find(|(_, tile)| **tile == Tile::Start)
-        .unwrap();
+        .filter_map(|(pos, tile)| match tile {
+            Tile::Start(rot) => Some((pos, rot)),
+            _ => None,
+        })
+        .for_each(|(start, rot)| {
+            let position = Vec3::new(start.0 as f32, PLAYER_Y_OFFSET, start.1 as f32);
 
-    let position = Vec3::new(start.0 as f32, PLAYER_Y_OFFSET, start.1 as f32);
+            let player = Player {
+                position: *start,
+                rotation: *rot,
+            };
 
-    commands.spawn((
-        Player { position: *start },
-        SceneBundle {
-            scene: mesh.player.clone(),
-            transform: Transform {
-                translation: position + Vec3::Y * 10.0,
-                rotation: Quat::from_rotation_y(PI / 2.),
-                scale: Vec3::ONE * 0.25,
-            },
-            ..default()
-        },
-        Animator::new(Tween::new(
-            EaseFunction::CubicOut,
-            Duration::from_secs_f32(2.0),
-            TransformPositionLens {
-                start: position + Vec3::Y * 10.0,
-                end: position,
-            },
-        )),
-    ));
+            commands.spawn((
+                player,
+                SceneBundle {
+                    scene: mesh.player.clone(),
+                    transform: Transform {
+                        translation: position + Vec3::Y * 10.0,
+                        rotation: player.rotation.to_quat(),
+                        scale: Vec3::ONE * 0.25,
+                    },
+                    ..default()
+                },
+                Animator::new(Tween::new(
+                    EaseFunction::CubicOut,
+                    Duration::from_secs_f32(2.0),
+                    TransformPositionLens {
+                        start: position + Vec3::Y * 10.0,
+                        end: position,
+                    },
+                )),
+            ));
+        });
 }
 
 #[derive(Debug, Event)]
 pub struct PlayerMove {
-    position: (i32, i32),
+    player: Player,
     action: Action,
 }
 
@@ -168,27 +177,30 @@ fn animate_player_movement(
     mut commands: Commands,
 ) {
     let entity = trigger.entity();
-    let player = players.get(entity).unwrap();
+    let player = trigger.event().player;
+    let action = trigger.event().action;
+    let model = players.get(entity).unwrap();
 
     let transform: Box<dyn Tweenable<Transform>> = Box::new(Tween::new(
         EaseFunction::QuadraticOut,
         Duration::from_secs_f32(0.2),
         TransformPositionLens {
-            start: player.translation,
+            start: model.translation,
             end: Vec3::new(
-                trigger.event().position.0 as f32,
+                trigger.event().player.position.0 as f32,
                 PLAYER_Y_OFFSET,
-                trigger.event().position.1 as f32,
+                trigger.event().player.position.1 as f32,
             ),
         },
     ));
 
-    let rotation = match trigger.event().action {
-        Action::Forward => Quat::from_rotation_z(-0.2) * player.rotation,
-        Action::Backward => Quat::from_rotation_z(0.2) * player.rotation,
-        Action::Left => Quat::from_rotation_x(-0.2) * player.rotation,
-        Action::Right => Quat::from_rotation_x(0.2) * player.rotation,
-        Action::Nothing => player.rotation,
+    let desired_rotation = player.rotation.to_quat();
+
+    let tilt = match action {
+        Action::Forward => Quat::from_rotation_z(-0.2) * desired_rotation,
+        Action::Backward => Quat::from_rotation_z(0.2) * desired_rotation,
+        Action::Left => Quat::from_rotation_x(-0.2) * desired_rotation,
+        Action::Right => Quat::from_rotation_x(0.2) * desired_rotation,
     };
 
     let rotation: Box<dyn Tweenable<Transform>> = Box::new(Sequence::new([
@@ -196,16 +208,16 @@ fn animate_player_movement(
             EaseFunction::QuadraticIn,
             Duration::from_secs_f32(0.1),
             TransformRotationLens {
-                start: player.rotation,
-                end: rotation,
+                start: model.rotation,
+                end: tilt,
             },
         ),
         Tween::new(
             EaseFunction::QuadraticOut,
             Duration::from_secs_f32(0.1),
             TransformRotationLens {
-                start: rotation,
-                end: player.rotation,
+                start: tilt,
+                end: desired_rotation,
             },
         ),
     ]));
@@ -221,23 +233,47 @@ fn attempt_action(
     level: Res<Level>,
     mut players: Query<(Entity, &mut Player)>,
 ) {
-    for (entity, mut player) in &mut players {
-        let (new_player, event) = run_simulation_step(&level, *player, *trigger.event());
-        *player = new_player;
+    let (entities, mut_players) = players.iter_mut().collect::<(Vec<_>, Vec<_>)>();
 
-        commands.trigger_targets(
-            PlayerMove {
-                position: player.position,
-                action: *trigger.event(),
-            },
-            entity,
-        );
+    let (new_players, events) = run_simulation_step(
+        &level,
+        &mut_players
+            .iter()
+            .map(|player| **player)
+            .collect::<Vec<_>>(),
+        *trigger.event(),
+    )
+    .into_iter()
+    .collect::<(Vec<_>, Vec<_>)>();
 
-        match event {
-            Some(SimulationEvent::Finished) => commands.trigger(LevelCompleted),
-            Some(SimulationEvent::Died) => commands.trigger_targets(Death::Fell, entity),
-            None => {}
-        }
+    mut_players
+        .into_iter()
+        .zip(entities.iter())
+        .zip(new_players)
+        .for_each(|((mut player, entity), new_player)| {
+            *player = new_player;
+
+            commands.trigger_targets(
+                PlayerMove {
+                    player: *player,
+                    action: player.rotation.to_combinator()(trigger.event()),
+                },
+                *entity,
+            );
+        });
+
+    if events
+        .iter()
+        .all(|event| matches!(event, Some(SimulationEvent::Finished)))
+    {
+        commands.trigger(LevelCompleted);
+    }
+
+    for index in events.iter().filter_map(|event| match event {
+        Some(SimulationEvent::Died(index)) => Some(*index),
+        _ => None,
+    }) {
+        commands.trigger_targets(Death::Fell, entities[index]);
     }
 }
 

@@ -1,4 +1,4 @@
-use bevy::{ecs::system::SystemParam, prelude::*};
+use bevy::{ecs::system::SystemParam, prelude::*, utils::HashMap};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -55,23 +55,26 @@ pub struct ChallengeRecord {
 }
 
 #[derive(Debug, Clone, Resource, Deref, DerefMut, Serialize, Deserialize)]
-pub struct ChallengeState(Vec<ChallengeRecord>);
+pub struct ChallengeState(HashMap<String, ChallengeRecord>);
 
 impl Default for ChallengeState {
     fn default() -> Self {
         Self(
             SCENES
                 .iter()
-                .map(|scene| {
+                .filter_map(|scene| {
                     if let level::Scene::Level(level) = scene {
-                        ChallengeRecord {
-                            commands: level.command_challenge.is_some().then_some(false),
-                            steps: level.step_challenge.is_some().then_some(false),
-                            waste: level.waste_challenge.is_some().then_some(false),
-                            level_completed: false,
-                        }
+                        Some((
+                            level.name.to_string(),
+                            ChallengeRecord {
+                                commands: level.command_challenge.is_some().then_some(false),
+                                steps: level.step_challenge.is_some().then_some(false),
+                                waste: level.waste_challenge.is_some().then_some(false),
+                                level_completed: false,
+                            },
+                        ))
                     } else {
-                        ChallengeRecord::default()
+                        None
                     }
                 })
                 .collect(),
@@ -93,11 +96,14 @@ pub struct ActiveChallenge<'w> {
 
 impl ActiveChallenge<'_> {
     pub fn get_record_mut(&mut self) -> Option<&mut ChallengeRecord> {
-        self.challenge_state.0.get_mut(**self.level_counter)
-    }
-
-    pub fn get_record(&self) -> Option<&ChallengeRecord> {
-        self.challenge_state.0.get(**self.level_counter)
+        match SCENES.get(**self.level_counter)? {
+            level::Scene::Level(level) => Some(
+                self.challenge_state
+                    .entry(level.name.to_string())
+                    .or_default(),
+            ),
+            _ => None,
+        }
     }
 
     pub fn is_changed(&self) -> bool {
@@ -155,13 +161,13 @@ fn update_challenge_ui(
     mut commands: Commands,
     query: Query<Entity, With<ChallengeRoot>>,
     level: Res<Level>,
-    challenge: ActiveChallenge,
+    mut challenge: ActiveChallenge,
 ) {
     if !(level.is_changed() || challenge.is_changed()) {
         return;
     }
 
-    let challenge = challenge.get_record().cloned().unwrap_or_default();
+    let challenge = challenge.get_record_mut().cloned().unwrap_or_default();
 
     commands
         .entity(query.get_single().unwrap())

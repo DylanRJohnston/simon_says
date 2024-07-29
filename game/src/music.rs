@@ -183,7 +183,7 @@ fn loop_game_music(
         audio
             .play(music.where_am_i.clone())
             .fade_in(AudioTween::new(
-                Duration::from_secs_f32(10.),
+                Duration::from_secs_f32(2.),
                 AudioEasing::OutPowi(2),
             ))
             .start_from(10.)
