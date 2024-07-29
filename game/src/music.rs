@@ -4,8 +4,9 @@ use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 
 use crate::{
+    assets::{MusicAssets, SoundAssets},
     delayed_command::DelayedCommand,
-    game_state::{GameState, MusicAssets, SoundAssets},
+    game_state::GameState,
     player::{LevelCompleted, PlayerMove},
 };
 
@@ -30,6 +31,7 @@ impl Plugin for MusicPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(AudioPlugin)
             .insert_resource(MusicHandles::default())
+            .insert_resource(MasterVolume::Unmuted)
             .add_audio_channel::<MusicChannel>()
             .add_audio_channel::<EffectChannel>()
             .add_audio_channel::<DialogueChannel>()
@@ -39,6 +41,7 @@ impl Plugin for MusicPlugin {
             )
             .add_systems(Update, loop_game_music.run_if(in_state(GameState::InGame)))
             .add_systems(Update, loop_pause_music.run_if(in_state(GameState::Paused)))
+            .add_systems(Update, set_volume)
             .add_systems(OnEnter(GameState::MainMenu), change_music)
             .add_systems(OnEnter(GameState::InGame), change_music)
             .add_systems(OnEnter(GameState::Paused), change_music)
@@ -56,7 +59,20 @@ impl Plugin for MusicPlugin {
     }
 }
 
-const DEFAULT_MUSIC_VOLUME: f64 = 0.8;
+#[derive(Debug, Clone, Resource, Copy)]
+pub enum MasterVolume {
+    Muted,
+    Unmuted,
+}
+
+impl MasterVolume {
+    pub fn volume(&self) -> f64 {
+        match self {
+            Self::Muted => 0.0,
+            Self::Unmuted => 0.8,
+        }
+    }
+}
 
 #[derive(Debug, Default, Resource)]
 struct MusicHandles {
@@ -65,11 +81,27 @@ struct MusicHandles {
     pause: Option<Handle<AudioInstance>>,
 }
 
+fn set_volume(
+    master_volume: Res<MasterVolume>,
+    music: Res<AudioChannel<MusicChannel>>,
+    effects: Res<AudioChannel<EffectChannel>>,
+    dialogue: Res<AudioChannel<DialogueChannel>>,
+) {
+    if !master_volume.is_changed() {
+        return;
+    }
+
+    music.set_volume(master_volume.volume());
+    effects.set_volume(master_volume.volume());
+    dialogue.set_volume(master_volume.volume());
+}
+
 fn change_music(
     state: Res<State<GameState>>,
     handles: Res<MusicHandles>,
     audio_instances: ResMut<Assets<AudioInstance>>,
     dialogue_channel: ResMut<AudioChannel<DialogueChannel>>,
+    master_volume: Res<MasterVolume>,
 ) {
     let audio_instances = RefCell::new(audio_instances);
 
@@ -91,7 +123,7 @@ fn change_music(
                 .borrow_mut()
                 .get_mut(handle)?
                 .resume(AudioTween::new(
-                    Duration::from_secs_f32(2.),
+                    Duration::from_secs_f32(1.),
                     AudioEasing::OutPowi(2),
                 ))
         });
@@ -114,7 +146,7 @@ fn change_music(
             play_music(&handles.game);
             pause_music(&handles.menu);
             pause_music(&handles.pause);
-            set_dialogue_volume(1.)
+            set_dialogue_volume(master_volume.volume())
         }
         GameState::Paused => {
             play_music(&handles.pause);
@@ -138,23 +170,23 @@ fn loop_game_music(
         return;
     }
 
-    *timer = Timer::from_seconds(120., TimerMode::Once);
+    *timer = Timer::from_seconds(100., TimerMode::Once);
 
     handles.game.as_ref().and_then(|handle| {
         audio_instances.get_mut(handle)?.stop(AudioTween::new(
             Duration::from_secs_f32(10.),
-            AudioEasing::InPowi(2),
+            AudioEasing::Linear,
         ))
     });
 
     handles.game = Some(
         audio
             .play(music.where_am_i.clone())
-            .with_volume(DEFAULT_MUSIC_VOLUME)
             .fade_in(AudioTween::new(
                 Duration::from_secs_f32(10.),
                 AudioEasing::OutPowi(2),
             ))
+            .start_from(10.)
             .handle(),
     );
 }
@@ -171,21 +203,20 @@ fn loop_menu_music(
         return;
     }
 
-    *timer = Timer::from_seconds(91., TimerMode::Once);
+    *timer = Timer::from_seconds(80., TimerMode::Once);
 
     handles.menu.as_ref().and_then(|handle| {
         audio_instances.get_mut(handle)?.stop(AudioTween::new(
             Duration::from_secs_f32(5.),
-            AudioEasing::InPowi(2),
+            AudioEasing::Linear,
         ))
     });
 
     handles.menu = Some(
         audio
             .play(music.anachronism.clone())
-            .with_volume(DEFAULT_MUSIC_VOLUME)
             .fade_in(AudioTween::new(
-                Duration::from_secs_f32(5.),
+                Duration::from_secs_f32(1.),
                 AudioEasing::OutPowi(2),
             ))
             .handle(),
@@ -209,16 +240,15 @@ fn loop_pause_music(
     handles.pause.as_ref().and_then(|handle| {
         audio_instances.get_mut(handle)?.stop(AudioTween::new(
             Duration::from_secs_f32(5.),
-            AudioEasing::InPowi(2),
+            AudioEasing::Linear,
         ))
     });
 
     handles.pause = Some(
         audio
             .play(music.pause_music.clone())
-            .with_volume(1.5)
             .fade_in(AudioTween::new(
-                Duration::from_secs_f32(5.),
+                Duration::from_secs_f32(1.),
                 AudioEasing::OutPowi(2),
             ))
             .handle(),
@@ -238,7 +268,7 @@ fn level_completed(
     audio: Res<AudioChannel<EffectChannel>>,
 ) {
     let handle = music.level_completed.clone();
-    audio.play(handle).with_volume(DEFAULT_MUSIC_VOLUME);
+    audio.play(handle);
 
     commands.trigger(SuppressMusicVolume {
         volume: 0.0,
@@ -258,7 +288,7 @@ fn change_level(
     audio: Res<AudioChannel<EffectChannel>>,
 ) {
     let handle = music.change_level.clone();
-    audio.play(handle).with_volume(DEFAULT_MUSIC_VOLUME);
+    audio.play(handle);
 
     commands.trigger(SuppressMusicVolume {
         volume: 0.0,
@@ -276,7 +306,11 @@ pub struct SuppressMusicVolume {
     pub falling_edge: Duration,
 }
 
-fn suppress_music(trigger: Trigger<SuppressMusicVolume>, mut commands: Commands) {
+fn suppress_music(
+    trigger: Trigger<SuppressMusicVolume>,
+    mut commands: Commands,
+    master_volume: Res<MasterVolume>,
+) {
     let event = trigger.event();
 
     commands.trigger(SetMusicVolume {
@@ -286,11 +320,12 @@ fn suppress_music(trigger: Trigger<SuppressMusicVolume>, mut commands: Commands)
     });
 
     let falling_edge = event.falling_edge;
+    let master_volume = master_volume.volume();
     commands.spawn(DelayedCommand::new(
         event.leading_edge.as_secs_f32() + event.middle.as_secs_f32(),
         move |commands| {
             commands.trigger(SetMusicVolume {
-                volume: DEFAULT_MUSIC_VOLUME,
+                volume: master_volume,
                 duration: falling_edge,
                 easing: AudioEasing::OutPowi(2),
             });

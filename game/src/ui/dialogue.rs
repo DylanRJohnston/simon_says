@@ -4,10 +4,11 @@ use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 
 use crate::{
+    assets::SoundAssets,
     delayed_command::DelayedCommand,
-    game_state::{GameState, SoundAssets},
+    game_state::GameState,
     level::LoadNextLevel,
-    music::{DialogueChannel, SuppressMusicVolume},
+    music::{DialogueChannel, MasterVolume, SuppressMusicVolume},
 };
 
 use super::{main_menu::Refuse, UI_BACKGROUND_COLOR, UI_CONTAINER_PADDING, UI_CONTAINER_RADIUS};
@@ -92,6 +93,7 @@ fn play_dialogue_segment(
     sounds: Res<SoundAssets>,
     mut count: Local<usize>,
     mut timer: Local<Timer>,
+    master_volume: Res<MasterVolume>,
     time: Res<Time>,
 ) {
     if !timer.tick(time.delta()).finished() || dialogue_queue.0.is_empty() {
@@ -108,7 +110,7 @@ fn play_dialogue_segment(
     audio.play(sounds.dialogue[*count].clone());
     // commands.spawn(DelayedCommand::new(0.1, move |commands| {
     commands.trigger(SuppressMusicVolume {
-        volume: 0.1,
+        volume: master_volume.volume().min(0.1),
         leading_edge: Duration::from_secs_f32(0.5),
         middle: Duration::from_secs_f32(dialogue_queue.0.len() as f32 * 5.),
         falling_edge: Duration::from_secs_f32(2.),

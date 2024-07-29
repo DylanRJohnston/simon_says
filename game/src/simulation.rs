@@ -140,7 +140,10 @@ pub fn run_simulation_step(
 
 #[cfg(test)]
 mod test {
-    use std::rc::Rc;
+    use std::{
+        collections::{BTreeMap, BTreeSet},
+        rc::Rc,
+    };
 
     use bevy::utils::HashSet;
 
@@ -217,6 +220,106 @@ mod test {
 
     fn tracing_init() {
         let _ = tracing_subscriber::fmt().pretty().try_init();
+    }
+
+    #[test]
+    pub fn all_novel_plans() {
+        tracing_init();
+
+        let all_novel_solutions = solution_iter(&Level {
+            action_limit: 4,
+            actions: vec![Forward, Backward, Left, Right],
+            ..default()
+        })
+        .map(|plan| {
+            ActionPlan(plan.clone())
+                .canonicalize_rotation()
+                .canonicalize_mirror()
+        })
+        .into_grouping_map_by(|plan| plan.canonicalize_phase())
+        .aggregate(|acc, _key, value| match acc {
+            None => Some(BTreeSet::from([value.0])),
+            Some(mut acc) => {
+                acc.insert(value.0);
+                Some(acc)
+            }
+        })
+        .into_iter()
+        .map(|(key, value)| (key, value.into_iter().collect::<Vec<_>>()))
+        .collect::<BTreeMap<_, _>>();
+
+        assert_eq!(
+            all_novel_solutions.into_values().collect::<Vec<_>>(),
+            vec![
+                vec![vec![Forward]],
+                vec![vec![Forward, Forward]],
+                vec![vec![Forward, Forward, Forward]],
+                vec![vec![Forward, Forward, Forward, Forward]],
+                vec![
+                    vec![Forward, Forward, Forward, Right],
+                    vec![Forward, Forward, Right, Forward],
+                    vec![Forward, Right, Forward, Forward]
+                ],
+                vec![
+                    vec![Forward, Forward, Forward, Backward],
+                    vec![Forward, Forward, Backward, Forward],
+                    vec![Forward, Backward, Forward, Forward]
+                ],
+                vec![vec![Forward, Forward, Right], vec![Forward, Right, Forward]],
+                vec![
+                    vec![Forward, Forward, Right, Right],
+                    vec![Forward, Right, Right, Forward]
+                ],
+                vec![
+                    vec![Forward, Forward, Right, Backward],
+                    vec![Forward, Right, Backward, Forward]
+                ],
+                vec![
+                    vec![Forward, Forward, Right, Left],
+                    vec![Forward, Right, Left, Forward]
+                ],
+                vec![
+                    vec![Forward, Forward, Backward],
+                    vec![Forward, Backward, Forward]
+                ],
+                vec![
+                    vec![Forward, Forward, Backward, Right],
+                    vec![Forward, Backward, Right, Forward]
+                ],
+                vec![
+                    vec![Forward, Forward, Backward, Backward],
+                    vec![Forward, Backward, Backward, Forward]
+                ],
+                vec![vec![Forward, Right]],
+                vec![vec![Forward, Right, Forward, Right]],
+                vec![
+                    vec![Forward, Right, Forward, Backward],
+                    vec![Forward, Backward, Forward, Right]
+                ],
+                vec![vec![Forward, Right, Forward, Left]],
+                vec![vec![Forward, Right, Right]],
+                vec![vec![Forward, Right, Right, Right]],
+                vec![vec![Forward, Right, Right, Backward]],
+                vec![vec![Forward, Right, Right, Left]],
+                vec![vec![Forward, Right, Backward]],
+                vec![vec![Forward, Right, Backward, Right]],
+                vec![vec![Forward, Right, Backward, Backward]],
+                vec![vec![Forward, Right, Backward, Left]],
+                vec![vec![Forward, Right, Left]],
+                vec![vec![Forward, Right, Left, Right]],
+                vec![vec![Forward, Right, Left, Backward]],
+                vec![vec![Forward, Right, Left, Left]],
+                vec![vec![Forward, Backward]],
+                vec![vec![Forward, Backward, Forward, Backward]],
+                vec![vec![Forward, Backward, Right]],
+                vec![vec![Forward, Backward, Right, Right]],
+                vec![vec![Forward, Backward, Right, Backward]],
+                vec![vec![Forward, Backward, Right, Left]],
+                vec![vec![Forward, Backward, Backward]],
+                vec![vec![Forward, Backward, Backward, Right]],
+                vec![vec![Forward, Backward, Backward, Backward]]
+            ]
+        );
     }
 
     fn smallest_solutions(solutions: &[Solution]) -> Vec<Solution> {
@@ -354,19 +457,22 @@ mod test {
         );
     }
 
-    fn level_from_scene(scene: &level::Scene) -> &Level {
-        match scene {
-            level::Scene::Level(level) => level,
-            _ => panic!("expected level scene"),
-        }
+    fn level_from_name(name: &str) -> &Level {
+        SCENES
+            .iter()
+            .find_map(|scene| match scene {
+                level::Scene::Level(level) if level.name == name => Some(level),
+                _ => None,
+            })
+            .unwrap()
     }
 
     #[test]
-    fn level_one() {
+    fn level_lost() {
         tracing_init();
 
         assert_eq!(
-            depth_first_search(level_from_scene(&SCENES[0])),
+            depth_first_search(level_from_name("Lost")),
             vec![Solution {
                 path: vec![Action::Forward],
                 solution_size: 1,
@@ -376,11 +482,11 @@ mod test {
     }
 
     #[test]
-    fn level_two() {
+    fn level_arbitrary() {
         tracing_init();
 
         assert_eq!(
-            depth_first_search(level_from_scene(&SCENES[1])),
+            depth_first_search(level_from_name("Arbitrary")),
             vec![
                 Solution {
                     path: vec![Action::Forward, Action::Right],
@@ -397,11 +503,11 @@ mod test {
     }
 
     #[test]
-    fn level_three() {
+    fn level_pothole() {
         tracing_init();
 
         assert_eq!(
-            depth_first_search(level_from_scene(&SCENES[2])),
+            depth_first_search(level_from_name("Pothole")),
             vec![Solution {
                 path: vec![Action::Left, Action::Forward],
                 solution_size: 2,
@@ -411,11 +517,11 @@ mod test {
     }
 
     #[test]
-    fn level_four() {
+    fn level_obstructions() {
         tracing_init();
 
         assert_eq!(
-            depth_first_search(level_from_scene(&SCENES[3])),
+            depth_first_search(level_from_name("Obstructions")),
             vec![
                 Solution {
                     path: vec![Action::Forward, Action::Right],
@@ -452,10 +558,10 @@ mod test {
     }
 
     #[test]
-    fn level_five() {
+    fn level_choices() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_scene(&SCENES[4]));
+        let solutions = depth_first_search(level_from_name("Choices"));
 
         assert_eq!(
             smallest_solutions(&solutions),
@@ -500,10 +606,10 @@ mod test {
     }
 
     #[test]
-    fn level_six() {
+    fn level_precarious() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_scene(&SCENES[5]));
+        let solutions = depth_first_search(level_from_name("Precarious"));
 
         assert_eq!(
             smallest_solutions(&solutions),
@@ -536,10 +642,10 @@ mod test {
     }
 
     #[test]
-    fn level_seven() {
+    fn level_hook() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_scene(&SCENES[6]));
+        let solutions = depth_first_search(level_from_name("Hook"));
 
         assert_eq!(
             smallest_solutions(&solutions),
@@ -591,10 +697,10 @@ mod test {
     }
 
     #[test]
-    fn level_eight() {
+    fn level_crucible() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_scene(&SCENES[7]));
+        let solutions = depth_first_search(level_from_name("Crucible"));
 
         assert_eq!(
             smallest_solutions(&solutions),
@@ -644,10 +750,10 @@ mod test {
     }
 
     #[test]
-    fn level_nine() {
+    fn level_overshoot() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_scene(&SCENES[8]));
+        let solutions = depth_first_search(level_from_name("Overshoot"));
 
         assert_eq!(
             smallest_solutions(&solutions),
@@ -666,10 +772,10 @@ mod test {
     }
 
     #[test]
-    fn level_ten() {
+    fn level_glide() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_scene(&SCENES[9]));
+        let solutions = depth_first_search(level_from_name("Glide"));
 
         assert_eq!(
             smallest_solutions(&solutions),
@@ -688,10 +794,10 @@ mod test {
     }
 
     #[test]
-    fn level_eleven() {
+    fn level_loops() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_scene(&SCENES[10]));
+        let solutions = depth_first_search(level_from_name("Loops"));
 
         assert_eq!(
             smallest_solutions(&solutions),
@@ -734,7 +840,7 @@ mod test {
     fn level_twelve() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_scene(&SCENES[11]));
+        let solutions = depth_first_search(level_from_name("Gauntlet"));
 
         assert_eq!(
             smallest_solutions(&solutions),

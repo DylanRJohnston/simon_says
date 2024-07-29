@@ -2,7 +2,8 @@ use bevy::prelude::*;
 
 use crate::{
     actions::{ActionPlan, RemoveAction},
-    game_state::{GameState, IconAssets},
+    assets::IconAssets,
+    game_state::GameState,
     level::Level,
     simulation::{SimulationProgramCounter, SimulationState},
 };
@@ -30,6 +31,7 @@ impl ActionListPlugin {
             ActionPlanUI,
             NodeBundle {
                 style: Style {
+                    width: Val::Px(295.),
                     flex_direction: FlexDirection::Column,
                     padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
                     row_gap: Val::Px(UI_CONTAINER_GAP),
@@ -248,9 +250,7 @@ fn update_action_list(
 
                         button::Button::builder()
                             .icon(icons.remove.clone())
-                            .on_click(Box::new(move |commands, _| {
-                                commands.trigger(RemoveAction(index))
-                            }))
+                            .on_click(move |commands| commands.trigger(RemoveAction(index)))
                             .background_color(*UI_BACKGROUND_COLOR)
                             .border_color(*UI_BACKGROUND_COLOR)
                             .hover_background_color(*BUTTON_CANCEL_COLOR)
@@ -261,10 +261,10 @@ fn update_action_list(
 }
 
 fn reorder_button(
-    mut buttons: Query<(Entity, &ReorderButton, &Interaction, &mut UiImage), Changed<Interaction>>,
+    mut buttons: Query<(&ReorderButton, &Interaction, &mut UiImage), Changed<Interaction>>,
     mut action_plan: ResMut<ActionPlan>,
 ) {
-    for (entity, button, interaction, mut image) in &mut buttons {
+    for (button, interaction, mut image) in &mut buttons {
         if button.disabled {
             continue;
         }

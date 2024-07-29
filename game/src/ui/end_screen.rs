@@ -2,15 +2,21 @@ use bevy::prelude::*;
 
 use crate::level::GameFinished;
 
-use super::{PRIMARY_TEXT_COLOR, UI_BACKGROUND_COLOR, UI_CONTAINER_PADDING, UI_CONTAINER_RADIUS};
+use super::{
+    settings::CreateSettingsUI, PRIMARY_TEXT_COLOR, UI_BACKGROUND_COLOR, UI_CONTAINER_PADDING,
+    UI_CONTAINER_RADIUS,
+};
 
 pub struct EndScreenPlugin;
 
 impl Plugin for EndScreenPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(end_game);
+        app.observe(end_game).observe(despawn_endgame);
     }
 }
+
+#[derive(Debug, Component)]
+pub struct EndScreenRoot;
 
 fn end_game(_trigger: Trigger<GameFinished>, mut commands: Commands) {
     commands
@@ -23,7 +29,7 @@ fn end_game(_trigger: Trigger<GameFinished>, mut commands: Commands) {
                 ..default()
             },
             ..default()
-        },))
+        },EndScreenRoot))
         .with_children(|container| {
             container
                 .spawn(NodeBundle {
@@ -46,4 +52,14 @@ fn end_game(_trigger: Trigger<GameFinished>, mut commands: Commands) {
                     });
                 });
         });
+}
+
+fn despawn_endgame(
+    _trigger: Trigger<CreateSettingsUI>,
+    mut commands: Commands,
+    end_screen: Query<Entity, With<EndScreenRoot>>,
+) {
+    for entity in &end_screen {
+        commands.entity(entity).despawn_recursive();
+    }
 }

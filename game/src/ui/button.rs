@@ -1,4 +1,4 @@
-use bevy::{ecs::system::EntityCommands, prelude::*, ui::FocusPolicy};
+use bevy::{ecs::system::EntityCommands, prelude::*};
 
 use super::{
     constants::{BUTTON_BORDER_THICKNESS, BUTTON_COLOR, PRIMARY_TEXT_COLOR},
@@ -17,7 +17,7 @@ impl Plugin for ButtonPlugin {
 
 #[derive(Default)]
 pub struct ButtonBuilder {
-    on_click: Option<OnClick>,
+    on_click: Option<Box<OnClick>>,
     background_color: Option<Color>,
     border_color: Option<Color>,
     hover_background_color: Option<Color>,
@@ -25,12 +25,13 @@ pub struct ButtonBuilder {
     text_color: Option<Color>,
     text: Option<String>,
     icon: Option<Handle<Image>>,
+    size: Option<f32>,
     disabled: bool,
 }
 
 impl ButtonBuilder {
-    pub fn on_click(mut self, callback: OnClick) -> Self {
-        self.on_click = Some(callback);
+    pub fn on_click(mut self, callback: impl Fn(&mut Commands) + Send + Sync + 'static) -> Self {
+        self.on_click = Some(Box::new(callback));
         self
     }
 
@@ -71,6 +72,11 @@ impl ButtonBuilder {
 
     pub fn disabled(mut self) -> Self {
         self.disabled = true;
+        self
+    }
+
+    pub fn size(mut self, size: f32) -> Self {
+        self.size = Some(size);
         self
     }
 
@@ -119,11 +125,13 @@ impl ButtonBuilder {
                 });
             }
             if let Some(icon) = self.icon {
+                let size = self.size.unwrap_or(20.);
+
                 command_container.spawn((
                     NodeBundle {
                         style: Style {
-                            width: Val::Px(20.),
-                            height: Val::Px(20.),
+                            width: Val::Px(size),
+                            height: Val::Px(size),
                             ..default()
                         },
                         ..default()
@@ -136,13 +144,13 @@ impl ButtonBuilder {
     }
 }
 
-pub type OnClick = Box<dyn Fn(&mut Commands, Entity) + Send + Sync + 'static>;
+pub type OnClick = dyn Fn(&mut Commands) + Send + Sync + 'static;
 
 #[derive(Component, Reflect)]
 #[reflect(from_reflect = false)]
 pub struct Button {
     #[reflect(ignore)]
-    on_click: OnClick,
+    pub on_click: Box<OnClick>,
     pub background_color: Option<Color>,
     pub border_color: Option<Color>,
     pub hover_background_color: Option<Color>,
@@ -161,7 +169,6 @@ fn button_interaction(
     mut commands: Commands,
     mut actions: Query<
         (
-            Entity,
             &Interaction,
             &Button,
             &mut BorderColor,
@@ -170,7 +177,7 @@ fn button_interaction(
         Changed<Interaction>,
     >,
 ) {
-    for (entity, interaction, button, mut border_color, mut background_color) in &mut actions {
+    for (interaction, button, mut border_color, mut background_color) in &mut actions {
         if button.disabled {
             *border_color = BorderColor::from(*UI_BACKGROUND_COLOR);
             *background_color = BackgroundColor::from(*UI_BACKGROUND_COLOR);
@@ -190,7 +197,7 @@ fn button_interaction(
                     .unwrap_or(*PRIMARY_TEXT_COLOR)
                     .into();
 
-                (button.on_click)(&mut commands, entity);
+                (button.on_click)(&mut commands);
             }
             Interaction::Hovered => {
                 *border_color = button
@@ -235,6 +242,8 @@ fn update_style(
 
             continue;
         }
+
+        tracing::info!("setting undisabled style");
 
         *background_color = button.background_color.unwrap_or(*BUTTON_COLOR).into();
         *border_color = button

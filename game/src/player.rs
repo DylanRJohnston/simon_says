@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, time::Duration};
 
-use bevy::{prelude::*, render::view::NoFrustumCulling, tasks::futures_lite::future};
+use bevy::{prelude::*, render::view::NoFrustumCulling};
 use bevy_kira_audio::{AudioChannel, AudioControl};
 use bevy_tweening::{
     lens::{TransformPositionLens, TransformRotationLens},
@@ -9,8 +9,9 @@ use bevy_tweening::{
 
 use crate::{
     actions::Action,
+    assets::{ModelAssets, SoundAssets},
     delayed_command::{DelayedCommand, DelayedCommandExt},
-    game_state::{GameState, ModelAssets, SoundAssets},
+    game_state::GameState,
     level::{Level, Tile},
     music::EffectChannel,
     simulation::{run_simulation_step, SimulationEvent, SimulationPause, SimulationStop},
@@ -308,11 +309,7 @@ fn despawn_player(
     }
 }
 
-fn level_completed(
-    _trigger: Trigger<LevelCompleted>,
-    mut commands: Commands,
-    players: Query<(Entity, &Player)>,
-) {
+fn level_completed(_trigger: Trigger<LevelCompleted>, mut commands: Commands) {
     commands.trigger(DespawnPlayer);
     commands.trigger(SimulationPause);
     commands.spawn(DelayedCommand::new(2.1, move |commands| {

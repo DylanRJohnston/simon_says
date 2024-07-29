@@ -12,11 +12,7 @@ use crate::{
     delayed_command::{DelayedCommand, DelayedCommandExt},
     game_state::GameState,
     player::{LevelCompleted, SpawnPlayer},
-    ui::{
-        challenges::{ActiveChallenge, ChallengeRecord, ChallengeState},
-        constants::BUTTON_SUCCESS_COLOR,
-        settings::GameMode,
-    },
+    ui::{challenges::ChallengeState, constants::BUTTON_SUCCESS_COLOR, settings::GameMode},
 };
 
 pub struct LevelPlugin;
@@ -47,9 +43,10 @@ impl From<Level> for Scene {
     }
 }
 
-#[derive(Debug, Clone, Resource)]
+#[derive(Debug, Clone, Resource, Default)]
 pub struct Level {
     pub tiles: HashMap<(i32, i32), Tile>,
+    pub name: &'static str,
     pub actions: Vec<Action>,
     pub action_limit: usize,
     pub command_challenge: Option<usize>,
@@ -85,6 +82,7 @@ impl LevelBuilder {
     pub fn new() -> Self {
         Self(Level {
             tiles: HashMap::new(),
+            name: "Unnamed",
             actions: vec![
                 Action::Forward,
                 Action::Right,
@@ -147,6 +145,11 @@ impl LevelBuilder {
         self
     }
 
+    pub fn name(mut self, name: &'static str) -> Self {
+        self.0.name = name;
+        self
+    }
+
     pub fn build(self) -> Level {
         self.0
     }
@@ -169,6 +172,7 @@ static DIALOGUE_LEVEL: LazyLock<Level> = LazyLock::new(|| {
 pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
     vec![
         LevelBuilder::new()
+            .name("Lost")
             .action_limit(1)
             .actions([Action::Forward])
             .block((-2, 0), (2, 0), Tile::Basic)
@@ -176,6 +180,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Arbitrary")
             .action_limit(2)
             .actions([Action::Forward, Action::Right])
             .block((-2, -2), (2, 2), Tile::Basic)
@@ -183,6 +188,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Pothole")
             .action_limit(2)
             .block((-2, -2), (2, 2), Tile::Basic)
             .insert([((-2, 2), Tile::Start), ((2, -2), Tile::Finish)])
@@ -190,6 +196,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Obstructions")
             .action_limit(3)
             .command_challenge(2)
             .block((-1, -1), (1, 1), Tile::Basic)
@@ -205,6 +212,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Choices")
             .action_limit(6)
             .command_challenge(3)
             .step_challenge(8)
@@ -227,6 +235,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Precarious")
             .action_limit(6)
             .command_challenge(4)
             .step_challenge(8)
@@ -245,6 +254,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Hook")
             .action_limit(5)
             .command_challenge(4)
             .step_challenge(7)
@@ -263,6 +273,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Crucible")
             .action_limit(8)
             .command_challenge(7)
             .step_challenge(14)
@@ -276,6 +287,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Overshoot")
             .action_limit(4)
             .insert(from_pictogram(&[
                 #[rustfmt::ignore]
@@ -286,6 +298,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Glide")
             .action_limit(4)
             .insert(from_pictogram(&[
                 #[rustfmt::ignore]
@@ -298,6 +311,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Loops")
             .action_limit(5)
             .command_challenge(4)
             .step_challenge(9)
@@ -312,7 +326,9 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Gauntlet")
             .action_limit(5)
+            .command_challenge(5)
             .step_challenge(7)
             .waste_challenge(9)
             .insert(transform(
@@ -555,12 +571,7 @@ fn spawn_level(
 #[derive(Debug, Event)]
 pub struct GameFinished;
 
-fn level_completed(
-    _trigger: Trigger<LevelCompleted>,
-    mut commands: Commands,
-    level_root: Query<(Entity, &Children), With<LevelRoot>>,
-    tiles: Query<&Transform, With<Tile>>,
-) {
+fn level_completed(_trigger: Trigger<LevelCompleted>, mut commands: Commands) {
     commands.trigger(DespawnLevel);
 
     commands.spawn(DelayedCommand::new(2., move |commands| {

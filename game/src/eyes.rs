@@ -1,14 +1,9 @@
-use std::{
-    f32::consts::PI,
-    ops::{Deref, DerefMut},
-};
+use std::f32::consts::PI;
 
-use bevy::{ecs::system::SystemParam, math::VectorSpace, prelude::*};
+use bevy::{ecs::system::SystemParam, prelude::*};
 
 use crate::{
-    game_state::{GameState, TextureAssets},
-    player::Player,
-    ui::dialogue::DialogueStarted,
+    assets::TextureAssets, game_state::GameState, player::Player, ui::dialogue::DialogueStarted,
 };
 
 pub struct EyesPlugin;
@@ -45,9 +40,6 @@ const BOREDOM_UPPER_BOUND: f32 = 5.0;
 const NEUTRAL_LOWER_BOUND: f32 = 1.0;
 const NEUTRAL_UPPER_BOUND: f32 = 2.5;
 
-const SURPRISED_LOWER_BOUND: f32 = 0.5;
-const SURPRISED_UPPER_BOUND: f32 = 0.5;
-
 const FOCUSED_LOWER_BOUND: f32 = 2.5;
 const FOCUSED_UPPER_BOUND: f32 = 5.0;
 
@@ -62,13 +54,6 @@ impl Emotion {
     fn boredom() -> Self {
         Self::Bored(Timer::from_seconds(
             random_range(BOREDOM_LOWER_BOUND, BOREDOM_UPPER_BOUND),
-            TimerMode::Once,
-        ))
-    }
-
-    fn surprised() -> Self {
-        Self::Surprised(Timer::from_seconds(
-            random_range(SURPRISED_LOWER_BOUND, SURPRISED_UPPER_BOUND),
             TimerMode::Once,
         ))
     }

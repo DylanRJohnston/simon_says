@@ -1,12 +1,13 @@
 use bevy::{prelude::*, ui::FocusPolicy};
-use challenges::{ChallengeRecord, ChallengeState};
+use challenges::ChallengeState;
 
 use crate::{
+    assets::IconAssets,
     delayed_command::DelayedCommandExt,
-    game_state::{GameState, IconAssets},
-    level::{self, DespawnLevel, Level, LevelCounter, SCENES},
-    music::PlayChangeLevelMusic,
-    player::{Death, DespawnPlayer},
+    game_state::GameState,
+    level::{self, DespawnLevel, LevelCounter, SCENES},
+    music::{MasterVolume, PlayChangeLevelMusic},
+    player::DespawnPlayer,
 };
 
 use super::*;
@@ -21,7 +22,8 @@ impl Plugin for SettingsPlugin {
             .add_systems(Update, dismiss_settings_ui)
             .add_systems(Update, level_card_interactions)
             .observe(create_settings_ui)
-            .observe(destroy_settings_ui);
+            .observe(destroy_settings_ui)
+            .observe(toggle_volume);
     }
 }
 
@@ -47,9 +49,7 @@ fn spawn_ui(mut container: Commands, icons: Res<IconAssets>) {
         })
         .with_children(|container| {
             button::Button::builder()
-                .on_click(Box::new(|commands, _| {
-                    commands.trigger(CreateSettingsUI);
-                }))
+                .on_click(|commands| commands.trigger(CreateSettingsUI))
                 .icon(icons.bars.clone())
                 .build(container);
         });
@@ -80,8 +80,10 @@ fn create_settings_ui(
     _trigger: Trigger<CreateSettingsUI>,
     mut commands: Commands,
     game_mode: Res<GameMode>,
+    icons: Res<IconAssets>,
     challenges: Res<ChallengeState>,
     level_counter: Res<LevelCounter>,
+    master_volume: Res<MasterVolume>,
     mut game_state: ResMut<NextState<GameState>>,
 ) {
     game_state.set(GameState::Paused);
@@ -126,50 +128,76 @@ fn create_settings_ui(
                             style: Style {
                                 width: Val::Percent(100.),
                                 flex_direction: FlexDirection::Row,
-                                justify_content: JustifyContent::Start,
+                                justify_content: JustifyContent::SpaceBetween,
                                 align_items: AlignItems::Center,
-                                column_gap: Val::Px(UI_CONTAINER_GAP),
                                 ..default()
                             },
                             ..default()
                         })
                         .with_children(|container| {
-                            container.spawn(TextBundle {
-                                text: Text::from_section(
-                                    "Game Mode:",
-                                    TextStyle {
-                                        font_size: 45.,
-                                        color: *PRIMARY_TEXT_COLOR,
+                            container
+                                .spawn(NodeBundle {
+                                    style: Style {
+                                        column_gap: Val::Px(UI_CONTAINER_GAP),
                                         ..default()
                                     },
-                                ),
-                                style: Style { ..default() },
-                                ..default()
-                            });
+                                    ..default()
+                                })
+                                .with_children(|container| {
+                                    container.spawn(TextBundle {
+                                        text: Text::from_section(
+                                            "Game Mode:",
+                                            TextStyle {
+                                                font_size: 45.,
+                                                color: *PRIMARY_TEXT_COLOR,
+                                                ..default()
+                                            },
+                                        ),
+                                        style: Style { ..default() },
+                                        ..default()
+                                    });
 
-                            let mut story = button::Button::builder()
-                                .on_click(Box::new(|commands, _| {
-                                    commands.insert_resource(GameMode::Story);
-                                }))
-                                .text("Story".into());
+                                    let mut story = button::Button::builder()
+                                        .on_click(|commands| {
+                                            commands.insert_resource(GameMode::Story)
+                                        })
+                                        .text("Story".into());
 
-                            if *game_mode == GameMode::Story {
-                                story = story.border_color(*PRIMARY_TEXT_COLOR);
-                            }
+                                    if *game_mode == GameMode::Story {
+                                        story = story.border_color(*PRIMARY_TEXT_COLOR);
+                                    }
 
-                            story.build(container).insert(StoryButton);
+                                    story.build(container).insert(StoryButton);
 
-                            let mut challenge = button::Button::builder()
-                                .on_click(Box::new(|commands, _| {
-                                    commands.insert_resource(GameMode::Challenge);
-                                }))
-                                .text("Challenge".into());
+                                    let mut challenge = button::Button::builder()
+                                        .on_click(|commands| {
+                                            commands.insert_resource(GameMode::Challenge)
+                                        })
+                                        .text("Challenge".into());
 
-                            if *game_mode == GameMode::Challenge {
-                                challenge = challenge.border_color(*PRIMARY_TEXT_COLOR);
-                            }
+                                    if *game_mode == GameMode::Challenge {
+                                        challenge = challenge.border_color(*PRIMARY_TEXT_COLOR);
+                                    }
 
-                            challenge.build(container).insert(ChallengeButton);
+                                    challenge.build(container).insert(ChallengeButton);
+                                });
+
+                            container
+                                .spawn(NodeBundle {
+                                    style: Style { ..default() },
+                                    ..default()
+                                })
+                                .with_children(|container| {
+                                    button::Button::builder()
+                                        .on_click(|commands| commands.trigger(ToggleVolume))
+                                        .icon(match *master_volume {
+                                            MasterVolume::Muted => icons.mute.clone(),
+                                            MasterVolume::Unmuted => icons.unmute.clone(),
+                                        })
+                                        .size(24.)
+                                        .build(container)
+                                        .insert(VolumeButton);
+                                });
                         });
 
                     container.spawn((
@@ -258,7 +286,7 @@ fn create_settings_ui(
                                     .with_children(|container| {
                                         container.spawn(TextBundle {
                                             text: Text::from_section(
-                                                format!("Level {}", index + 1),
+                                                level.name,
                                                 TextStyle::default(),
                                             ),
                                             ..default()
@@ -405,6 +433,33 @@ fn level_card_interactions(
             },
             Interaction::Hovered => *cards = BorderColor(*PRIMARY_TEXT_COLOR),
             Interaction::None => *cards = BorderColor::default(),
+        }
+    }
+}
+
+#[derive(Debug, Component)]
+pub struct VolumeButton;
+
+#[derive(Debug, Event)]
+pub struct ToggleVolume;
+
+fn toggle_volume(
+    _trigger: Trigger<ToggleVolume>,
+    icon_assets: Res<IconAssets>,
+    mut master_volume: ResMut<MasterVolume>,
+    mut icons: Query<&mut UiImage>,
+    volume_button: Query<&Children, With<VolumeButton>>,
+) {
+    *master_volume = match *master_volume {
+        MasterVolume::Muted => MasterVolume::Unmuted,
+        MasterVolume::Unmuted => MasterVolume::Muted,
+    };
+
+    for children in &volume_button {
+        let mut icon = icons.get_mut(children[0]).unwrap();
+        icon.texture = match *master_volume {
+            MasterVolume::Muted => icon_assets.mute.clone(),
+            MasterVolume::Unmuted => icon_assets.unmute.clone(),
         }
     }
 }

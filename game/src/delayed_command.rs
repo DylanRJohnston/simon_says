@@ -42,19 +42,19 @@ fn run_delayed_commands(
 }
 
 pub trait DelayedCommandExt {
-    fn delayed<'a>(
-        &'a mut self,
+    fn delayed(
+        &mut self,
         secs: f32,
         command: impl FnMut(&mut Commands) + Send + Sync + 'static,
-    ) -> EntityCommands<'a>;
+    ) -> EntityCommands<'_>;
 }
 
 impl DelayedCommandExt for Commands<'_, '_> {
-    fn delayed<'a>(
-        &'a mut self,
+    fn delayed(
+        &mut self,
         secs: f32,
         command: impl FnMut(&mut Commands) + Send + Sync + 'static,
-    ) -> EntityCommands<'a> {
+    ) -> EntityCommands<'_> {
         self.spawn(DelayedCommand::new(secs, command))
     }
 }

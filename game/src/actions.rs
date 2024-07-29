@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{level::LoadNextLevel, player::LevelCompleted};
+use crate::level::LoadNextLevel;
 
 pub struct ActionPlugin;
 
@@ -9,11 +9,12 @@ impl Plugin for ActionPlugin {
         app.insert_resource(ActionPlan::default())
             .observe(add_action)
             .observe(remove_action)
-            .observe(reset_action_plan);
+            .observe(reset_action_plan)
+            .observe(reset_action_plan_on_level_load);
     }
 }
 
-#[derive(Debug, Clone, Copy, Event, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Event, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Action {
     Forward,
     Right,
@@ -125,55 +126,62 @@ pub struct AddAction(pub Action);
 #[derive(Debug, Clone, Copy, Event, Deref)]
 pub struct RemoveAction(pub usize);
 
-#[derive(Debug, Default, Clone, Resource, Deref, DerefMut, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Default, Clone, Resource, Deref, DerefMut, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 pub struct ActionPlan(pub Vec<Action>);
 
 impl ActionPlan {
-    pub fn isomorphic_under_rotation(&self, other: &ActionPlan) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
+    pub fn phase_iter(&self) -> impl Iterator<Item = Vec<Action>> {
+        let actions = self.clone().0;
 
-        if self.is_empty() && other.is_empty() {
-            return true;
-        }
-
-        let first = self[0].cw_rotation(other[0]);
-
-        for (a, b) in self.iter().zip(other.iter()).skip(1) {
-            if a.cw_rotation(*b) != first {
-                return false;
-            }
-        }
-
-        true
+        (1..=actions.len()).map(move |i| {
+            let mut phase = actions.clone();
+            phase.rotate_right(i);
+            phase
+        })
     }
 
-    pub fn isomorphic_under_phase_shift(&self, other: &ActionPlan) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-
-        if self.is_empty() && other.is_empty() {
-            return true;
-        }
-
-        unimplemented!();
+    pub fn canonicalize_phase(&self) -> Self {
+        Self(self.phase_iter().min().unwrap())
     }
 
-    pub fn isomorphic(&self, other: &ActionPlan) -> bool {
-        unimplemented!()
+    pub fn mirror(&self) -> Self {
+        ActionPlan(
+            self.iter()
+                .map(|action| match action {
+                    action @ (Action::Forward | Action::Backward | Action::Nothing) => *action,
+                    Action::Left => Action::Right,
+                    Action::Right => Action::Left,
+                })
+                .collect(),
+        )
     }
 
-    pub fn canonicalize(&mut self) {
+    pub fn canonicalize_mirror(&self) -> Self {
+        let mirror = self.mirror();
+
+        if self < &mirror {
+            self.clone()
+        } else {
+            mirror
+        }
+    }
+
+    pub fn canonicalize_rotation(&self) -> Self {
         if self.is_empty() {
-            return;
+            return Self::default();
         }
 
-        let first = self[0];
-        let rotate = first.cw_rotation(Action::Forward).to_combinator();
+        let rotate = self[0].cw_rotation(Action::Forward).to_combinator();
 
-        self.iter_mut().for_each(|action| *action = rotate(action));
+        Self(self.iter().map(rotate).collect())
+    }
+
+    pub fn canonicalize(&self) -> Self {
+        self.canonicalize_rotation()
+            .canonicalize_mirror()
+            .canonicalize_phase()
     }
 }
 
@@ -195,90 +203,13 @@ fn remove_action(trigger: Trigger<RemoveAction>, mut action_plan: ResMut<ActionP
     action_plan.remove(index);
 }
 
-fn reset_action_plan(_trigger: Trigger<LoadNextLevel>, mut action_plan: ResMut<ActionPlan>) {
+#[derive(Debug, Clone, Copy, Event)]
+pub struct ResetActionPlan;
+
+fn reset_action_plan(_trigger: Trigger<ResetActionPlan>, mut action_plan: ResMut<ActionPlan>) {
     action_plan.clear();
 }
 
-#[cfg(test)]
-mod test {
-    use bevy::utils::hashbrown::HashSet;
-    use proptest::prelude::*;
-
-    use crate::actions::{Action, ActionPlan};
-
-    fn any_action() -> impl Strategy<Value = Action> {
-        prop_oneof![
-            Just(Action::Forward),
-            Just(Action::Backward),
-            Just(Action::Left),
-            Just(Action::Right),
-        ]
-    }
-
-    proptest! {
-
-        #[test]
-        fn isomorphic_under_rotation(
-            mut action_plan in prop::collection::vec(any_action(), 0..10),
-            rotation_amount in 0..4
-        ) {
-            let original = action_plan.clone();
-
-            for _ in 0..=rotation_amount {
-                action_plan.iter_mut().for_each(|action| *action = action.rotate_cw());
-            }
-
-            prop_assert!(ActionPlan(original).isomorphic_under_rotation(&ActionPlan(action_plan)));
-        }
-
-        #[ignore]
-        #[test]
-        fn isomorphic_under_phase_shift(
-            action_plan in prop::collection::vec(any_action(), 0..10),
-        ) {
-            let mut action_plan = ActionPlan(action_plan);
-            let original = action_plan.clone();
-
-            for _ in 0..original.len() {
-                action_plan.rotate_right(1);
-
-                prop_assert!(original.isomorphic_under_phase_shift(&action_plan));
-            }
-
-        }
-    }
-
-    #[test]
-    pub fn all_novel_action_plans_under_rotation() {
-        let mut plans = HashSet::new();
-
-        // All one action plans are rotationally isomorphic to Forward
-        let action_plan = ActionPlan(vec![Action::Forward]);
-        plans.insert(action_plan.clone());
-
-        // All two actions plans are rotational / mirror isomorphic to (Forward, Backward) or (Forward, Right)
-        for action in [Action::Backward, Action::Right] {
-            let mut action_plan = action_plan.clone();
-            action_plan.push(action);
-
-            plans.insert(action_plan.clone());
-
-            for action in [
-                Action::Forward,
-                Action::Right,
-                Action::Backward,
-                Action::Left,
-            ] {
-                let mut action_plan = action_plan.clone();
-                action_plan.push(action);
-                plans.insert(action_plan.clone());
-            }
-        }
-
-        println!("Plan Count: {count}, {plans:?}", count = plans.len());
-
-        // for outer_plan in plans.clone() {
-        //     if
-        // }
-    }
+fn reset_action_plan_on_level_load(_trigger: Trigger<LoadNextLevel>, mut commands: Commands) {
+    commands.trigger(ResetActionPlan);
 }

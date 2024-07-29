@@ -1,28 +1,16 @@
-use bevy::{
-    app::{App, Plugin},
-    asset::Handle,
-    prelude::{AppExtStates, Image, Resource, States},
-    scene::Scene,
-};
-use bevy_asset_loader::{
-    asset_collection::AssetCollection,
-    loading_state::{config::ConfigureLoadingState, LoadingState, LoadingStateAppExt},
-};
-use bevy_kira_audio::AudioSource;
+use bevy::prelude::*;
+use bevy_pkv::PkvStore;
+
+use crate::ui::challenges::ChallengeState;
 
 pub struct GameStatePlugin;
 
 impl Plugin for GameStatePlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<GameState>().add_loading_state(
-            LoadingState::new(GameState::Loading)
-                .continue_to_state(GameState::MainMenu)
-                .load_collection::<MusicAssets>()
-                .load_collection::<SoundAssets>()
-                .load_collection::<TextureAssets>()
-                .load_collection::<ModelAssets>()
-                .load_collection::<IconAssets>(),
-        );
+        app.insert_resource(ChallengeState::new())
+            .insert_resource(PkvStore::new("DylanRJohnston", "SimonSays"))
+            .add_systems(Startup, setup)
+            .add_systems(Update, save_state);
     }
 }
 
@@ -35,77 +23,21 @@ pub enum GameState {
     Paused,
 }
 
-#[derive(AssetCollection, Resource)]
-pub struct MusicAssets {
-    #[asset(path = "music/level_completed.ogg")]
-    pub level_completed: Handle<AudioSource>,
-
-    #[asset(path = "music/where_am_i.ogg")]
-    pub where_am_i: Handle<AudioSource>,
-
-    #[asset(path = "music/anachronism.ogg")]
-    pub anachronism: Handle<AudioSource>,
-
-    #[asset(path = "music/change_level.ogg")]
-    pub change_level: Handle<AudioSource>,
-
-    #[asset(path = "music/pause_music.ogg")]
-    pub pause_music: Handle<AudioSource>,
-    // #[asset(path = "music/didact.ogg")]
-    // pub didact: Handle<AudioSource>,
+fn setup(pkv: Res<PkvStore>, mut state: ResMut<ChallengeState>) {
+    if let Ok(from_storage) = pkv.get::<ChallengeState>("challenge_state") {
+        *state = from_storage;
+    }
 }
 
-#[derive(AssetCollection, Resource)]
-pub struct SoundAssets {
-    #[asset(path = "sounds/move.ogg")]
-    pub player_move: Handle<AudioSource>,
+fn save_state(mut pkv: ResMut<PkvStore>, state: Res<ChallengeState>) {
+    if !state.is_changed() {
+        return;
+    }
 
-    #[asset(
-        paths(
-            "sounds/simon_dialogue_long_1.ogg",
-            "sounds/simon_dialogue_long_2.ogg",
-            // "sounds/simon_dialogue_long_3.ogg",
-            "sounds/simon_dialogue_long_4.ogg",
-            "sounds/simon_dialogue_long_5.ogg",
-            "sounds/simon_dialogue_long_6.ogg",
-            "sounds/simon_dialogue_long_7.ogg",
-            "sounds/simon_dialogue_long_8.ogg",
-            "sounds/simon_dialogue_long_9.ogg",
-        ),
-        collection(typed)
-    )]
-    pub dialogue: Vec<Handle<AudioSource>>,
-
-    #[asset(path = "sounds/death_glitch.ogg")]
-    pub death_glitch: Handle<AudioSource>,
+    if let Err(err) = pkv.set("challenge_state", &*state) {
+        tracing::error!(?err, "failed to save challenge state");
+    }
 }
 
-#[derive(AssetCollection, Resource)]
-pub struct TextureAssets {
-    #[asset(path = "textures/eye.png")]
-    pub eye: Handle<Image>,
-
-    #[asset(path = "textures/iris.png")]
-    pub iris: Handle<Image>,
-}
-
-#[derive(AssetCollection, Resource)]
-pub struct ModelAssets {
-    #[asset(path = "models/Animated Human.glb#Scene0")]
-    pub player: Handle<Scene>,
-}
-
-#[derive(AssetCollection, Resource)]
-pub struct IconAssets {
-    #[asset(path = "icons/remove.png")]
-    pub remove: Handle<Image>,
-
-    #[asset(path = "icons/up.png")]
-    pub up: Handle<Image>,
-
-    #[asset(path = "icons/down.png")]
-    pub down: Handle<Image>,
-
-    #[asset(path = "icons/bars.png")]
-    pub bars: Handle<Image>,
-}
+#[derive(Debug, Clone, Copy, Event)]
+pub struct ResetChallengeState;

@@ -50,24 +50,22 @@ fn spawn_main_menu(_trigger: Trigger<SpawnMainMenu>, mut commands: Commands) {
             .with_children(|container| {
                 button::Button::builder()
                     .text("Begin Cycle No. 4,815,162,342".into())
-                    .on_click(Box::new(|commands, _| {
-                        commands.trigger(StartGame);
-                    }))
+                    .on_click(|commands| commands.trigger(StartGame))
                     .build(container);
                 button::Button::builder()
                     .text("Disobey".into())
                     // .text("Vibe".into())
                     .background_color(*BUTTON_CANCEL_COLOR)
-                    .on_click(Box::new(|commands, _| {
+                    .on_click(|commands| {
                         commands.trigger(RemoveUI);
                         commands.trigger(Refuse);
-                    }))
+                    })
                     .build(container);
             });
     }));
 }
 
-fn destroy(mut commands: Commands, query: Query<Entity, With<MainMenuRoot>>) {
+fn destroy(mut commands: Commands) {
     commands.trigger(RemoveUI);
 }
 
@@ -77,11 +75,7 @@ pub struct RemoveUI;
 #[derive(Debug, Event)]
 pub struct Refuse;
 
-fn refuse(
-    _trigger: Trigger<Refuse>,
-    mut commands: Commands,
-    query: Query<Entity, With<MainMenuRoot>>,
-) {
+fn refuse(_trigger: Trigger<Refuse>, mut commands: Commands) {
     commands.spawn(DelayedCommand::new(35., |commands| {
         commands.trigger(SpawnMainMenu);
     }));

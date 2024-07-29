@@ -3,6 +3,7 @@ use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::prelude::*;
 use bevy_firework::plugin::ParticleSystemPlugin;
 use bevy_tweening::TweeningPlugin;
+use game::assets::AssetsPlugin;
 use game::game_state::GameStatePlugin;
 use game::music::MusicPlugin;
 use game::video_glitch::VideoGlitchPlugin;
@@ -47,6 +48,7 @@ fn main() {
     .add_plugins(ParticleSystemPlugin)
     .add_plugins(MusicPlugin)
     .add_plugins(VideoGlitchPlugin)
+    .add_plugins(AssetsPlugin)
     // .insert_resource(ClearColor(Color::srgb_u8(0x33, 0x3c, 0x57)))
     .insert_resource(ClearColor(Color::srgb_u8(0xdd, 0xdd, 0xdd)))
     .insert_resource(AmbientLight {
@@ -91,7 +93,7 @@ fn setup(mut commands: Commands) {
         Fxaa::default(),
         bevy_video_glitch::VideoGlitchSettings {
             intensity: 0.,
-            color_aberration: Mat3::IDENTITY,
+            ..default()
         },
     ));
 }

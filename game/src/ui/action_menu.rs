@@ -84,9 +84,7 @@ fn update_available_actions(
 
                         button::Button::builder()
                             .text(action.into())
-                            .on_click(Box::new(move |commands, _| {
-                                commands.trigger(AddAction(action))
-                            }))
+                            .on_click(move |commands| commands.trigger(AddAction(action)))
                             .build(action_row)
                             .insert(ActionButton);
                     }

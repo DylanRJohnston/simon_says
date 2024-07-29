@@ -1,4 +1,5 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     actions::{Action, ActionPlan},
@@ -13,14 +14,14 @@ pub struct ChallengePlugin;
 
 impl Plugin for ChallengePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            update_challenge_ui.run_if(in_state(GameState::InGame)),
-        )
-        .add_systems(Startup, init_challenge_state)
-        .observe(update_challenges)
-        .observe(count_steps)
-        .observe(reset_steps);
+        app.insert_resource(StepCount::default())
+            .add_systems(
+                Update,
+                update_challenge_ui.run_if(in_state(GameState::InGame)),
+            )
+            .observe(update_challenges)
+            .observe(count_steps)
+            .observe(reset_steps);
     }
 }
 
@@ -45,7 +46,7 @@ impl ChallengePlugin {
     }
 }
 
-#[derive(Debug, Clone, Default, Copy)]
+#[derive(Debug, Clone, Default, Copy, Serialize, Deserialize)]
 pub struct ChallengeRecord {
     pub commands: Option<bool>,
     pub steps: Option<bool>,
@@ -53,8 +54,36 @@ pub struct ChallengeRecord {
     pub level_completed: bool,
 }
 
-#[derive(Debug, Clone, Resource, Deref, DerefMut)]
+#[derive(Debug, Clone, Resource, Deref, DerefMut, Serialize, Deserialize)]
 pub struct ChallengeState(Vec<ChallengeRecord>);
+
+impl Default for ChallengeState {
+    fn default() -> Self {
+        Self(
+            SCENES
+                .iter()
+                .map(|scene| {
+                    if let level::Scene::Level(level) = scene {
+                        ChallengeRecord {
+                            commands: level.command_challenge.is_some().then_some(false),
+                            steps: level.step_challenge.is_some().then_some(false),
+                            waste: level.waste_challenge.is_some().then_some(false),
+                            level_completed: false,
+                        }
+                    } else {
+                        ChallengeRecord::default()
+                    }
+                })
+                .collect(),
+        )
+    }
+}
+
+impl ChallengeState {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 #[derive(SystemParam)]
 pub struct ActiveChallenge<'w> {
@@ -76,28 +105,7 @@ impl ActiveChallenge<'_> {
     }
 }
 
-fn init_challenge_state(mut commands: Commands) {
-    commands.insert_resource(ChallengeState(
-        SCENES
-            .iter()
-            .map(|scene| {
-                if let level::Scene::Level(level) = scene {
-                    ChallengeRecord {
-                        commands: level.command_challenge.is_some().then_some(false),
-                        steps: level.step_challenge.is_some().then_some(false),
-                        waste: level.waste_challenge.is_some().then_some(false),
-                        level_completed: false,
-                    }
-                } else {
-                    ChallengeRecord::default()
-                }
-            })
-            .collect(),
-    ));
-    commands.insert_resource(StepCount(0));
-}
-
-#[derive(Debug, Clone, Copy, Resource, Deref, DerefMut)]
+#[derive(Debug, Clone, Copy, Resource, Default, Deref, DerefMut)]
 pub struct StepCount(usize);
 fn count_steps(_trigger: Trigger<Action>, mut step_count: ResMut<StepCount>) {
     **step_count += 1;
