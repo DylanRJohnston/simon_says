@@ -4,7 +4,7 @@ use challenges::ChallengeState;
 use crate::{
     assets::IconAssets,
     delayed_command::DelayedCommandExt,
-    game_state::GameState,
+    game_state::{GameState, ResetChallengeState},
     level::{self, DespawnLevel, LevelCounter, SCENES},
     music::{MasterVolume, PlayChangeLevelMusic},
     player::DespawnPlayer,
@@ -184,7 +184,10 @@ fn create_settings_ui(
 
                             container
                                 .spawn(NodeBundle {
-                                    style: Style { ..default() },
+                                    style: Style {
+                                        column_gap: Val::Px(UI_CONTAINER_GAP),
+                                        ..default()
+                                    },
                                     ..default()
                                 })
                                 .with_children(|container| {
@@ -197,6 +200,20 @@ fn create_settings_ui(
                                         .size(24.)
                                         .build(container)
                                         .insert(VolumeButton);
+                                    button::Button::builder()
+                                        .background_color(*BUTTON_CANCEL_COLOR)
+                                        .on_click(|commands| {
+                                            commands.trigger(ResetChallengeState);
+                                            commands.trigger(DestroySettingsUI);
+                                            commands.trigger(DespawnLevel);
+                                            commands.trigger(DespawnPlayer);
+                                            commands.trigger(PlayChangeLevelMusic);
+                                            commands.delayed(2., move |commands| {
+                                                commands.trigger(level::LoadLevel(0))
+                                            });
+                                        })
+                                        .text("Reset".into())
+                                        .build(container);
                                 });
                         });
 

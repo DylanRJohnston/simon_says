@@ -10,7 +10,8 @@ impl Plugin for GameStatePlugin {
         app.insert_resource(ChallengeState::new())
             .insert_resource(PkvStore::new("DylanRJohnston", "SimonSays"))
             .add_systems(Startup, setup)
-            .add_systems(Update, save_state);
+            .add_systems(Update, save_state)
+            .observe(reset_challenge_state);
     }
 }
 
@@ -41,3 +42,10 @@ fn save_state(mut pkv: ResMut<PkvStore>, state: Res<ChallengeState>) {
 
 #[derive(Debug, Clone, Copy, Event)]
 pub struct ResetChallengeState;
+
+fn reset_challenge_state(
+    _trigger: Trigger<ResetChallengeState>,
+    mut state: ResMut<ChallengeState>,
+) {
+    *state = ChallengeState::new();
+}

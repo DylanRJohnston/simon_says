@@ -243,8 +243,6 @@ fn update_style(
             continue;
         }
 
-        tracing::info!("setting undisabled style");
-
         *background_color = button.background_color.unwrap_or(*BUTTON_COLOR).into();
         *border_color = button
             .border_color

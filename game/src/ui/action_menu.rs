@@ -26,7 +26,6 @@ impl ActionMenuPlugin {
             ActionMenuUI,
             NodeBundle {
                 style: Style {
-                    border: UiRect::all(Val::Px(2.)),
                     flex_direction: FlexDirection::Column,
                     padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
                     ..default()
@@ -58,7 +57,7 @@ fn update_available_actions(
         .with_children(|header| {
             header.spawn(TextBundle {
                 text: Text::from_section(
-                    "Commands",
+                    "Available Commands",
                     TextStyle {
                         font_size: 45.,
                         color: *PRIMARY_TEXT_COLOR,
