@@ -53,7 +53,7 @@ impl Plugin for MusicPlugin {
 
         // We move the menu music into the web page for wasm
         #[cfg(target_arch = "wasm32")]
-        app.add_systems(OnEnter(GameState::MainMenu), || unsafe {
+        app.add_systems(OnEnter(GameState::MainMenu), || {
             stop_menu_music_js();
         });
     }
