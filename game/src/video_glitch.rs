@@ -8,6 +8,7 @@ use crate::{delayed_command::DelayedCommandExt, game_state::GameState, player::D
 
 pub struct VideoGlitchPlugin;
 
+// TODO: https://www.shadertoy.com/view/MtXBDs
 impl Plugin for VideoGlitchPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, component_animator_system::<VideoGlitchSettings>)

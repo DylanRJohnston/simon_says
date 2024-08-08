@@ -87,6 +87,10 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         Camera3dBundle {
             transform,
+            camera: Camera {
+                hdr: false,
+                ..default()
+            },
             ..default()
         },
         IsDefaultUiCamera,

@@ -8,6 +8,7 @@ use bevy_tweening::{
     asset_animator_system, lens::TransformPositionLens, Animator, AssetAnimator, EaseFunction,
     EaseMethod, Lens, RepeatCount, Tween,
 };
+use rand::Rng;
 use std::{f32::consts::PI, sync::LazyLock, time::Duration};
 
 use crate::{
@@ -721,7 +722,11 @@ fn create_textures(
     mut materials: ResMut<Assets<StandardMaterial>>,
     textures: Res<TextureAssets>,
 ) {
-    let tile_handle = meshes.add(Cuboid::new(0.95, 0.95, 0.95));
+    let tile_handle = meshes.add(
+        Mesh::from(Cuboid::new(0.95, 0.95, 0.95))
+            .with_generated_tangents()
+            .unwrap(),
+    );
     commands.insert_resource(TileMesh(tile_handle));
 
     let basic = materials.add(Color::srgb_u8(0x3b, 0x5d, 0xc9));
@@ -735,6 +740,8 @@ fn create_textures(
         thickness: 0.1,
         ior: 1.31,
         clearcoat_perceptual_roughness: 0.5,
+        // normal_map_texture: Some(textures.ice_normal.clone()),
+        // occlusion_texture: Some(textures.ice_occlusion.clone()),
         ..default()
     });
 
@@ -875,6 +882,7 @@ fn spawn_level(
                 };
 
                 let mut entity = root.spawn((
+                    Name::from(format!("{tile:?}")),
                     *tile,
                     PbrBundle {
                         mesh: tile_mesh.clone(),
@@ -888,7 +896,13 @@ fn spawn_level(
                         },
                         transform: Transform {
                             translation: position - Vec3::Y * 10.0,
-                            rotation: Quat::from_rotation_y(std::f32::consts::PI),
+                            rotation: match tile {
+                                // Tile::Ice => Quat::from_rotation_y(
+                                //     rand::thread_rng().gen_range(0..4) as f32
+                                //         * std::f32::consts::FRAC_PI_2,
+                                // ),
+                                _ => Quat::from_rotation_y(std::f32::consts::PI),
+                            },
                             scale: match tile {
                                 Tile::Wall => Vec3::ONE + Vec3::Y * 0.4,
                                 _ => Vec3::ONE,

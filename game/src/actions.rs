@@ -166,7 +166,17 @@ impl ActionPlan {
     }
 
     pub fn canonicalize_phase(&self) -> Self {
-        Self(self.phase_iter().min().unwrap())
+        Self(
+            self.phase_iter()
+                .map(|plan| {
+                    ActionPlan(plan)
+                        .canonicalize_rotation()
+                        .canonicalize_mirror()
+                        .0
+                })
+                .min()
+                .unwrap(),
+        )
     }
 
     pub fn mirror(&self) -> Self {

@@ -83,6 +83,12 @@ pub struct TextureAssets {
 
     #[asset(path = "textures/cw_rot.png")]
     pub cw_rot: Handle<Image>,
+
+    #[asset(path = "textures/ice_001_nrm.png")]
+    pub ice_normal: Handle<Image>,
+
+    #[asset(path = "textures/ice_001_occ.png")]
+    pub ice_occlusion: Handle<Image>,
 }
 
 #[derive(AssetCollection, Resource)]
