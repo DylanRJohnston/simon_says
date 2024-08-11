@@ -9,5 +9,5 @@ opt-level = 1
 opt-level = 3
 
 [patch.crates-io]
-bevy_firework = { path = "../../github/bevy_firework" }
-bevy_video_glitch = { path = "../../github//bevy_video_glitch" }
+bevy_firework = { git = "https://github.com/DylanRJohnston/bevy_firework" }
+bevy_video_glitch = { git = "https://github.com/DylanRJohnston/bevy_video_glitch" }
