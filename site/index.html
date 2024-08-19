@@ -168,7 +168,9 @@
     loop
   ></audio>
   <script>
-    document.getElementById("menu-music").play();
+    const music = document.getElementById("menu-music");
+    music.volume = 0.6;
+    music.play();
   </script>
   <div class="info">
     <h1>Headphones Recommended</h1>

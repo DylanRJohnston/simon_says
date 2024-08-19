@@ -672,6 +672,7 @@ dependencies = [
 [[package]]
 name = "bevy_firework"
 version = "0.5.0"
+source = "git+https://github.com/DylanRJohnston/bevy_firework#d04917f75cb48070c0af08e3ba962854380a6190"
 dependencies = [
  "bevy",
  "bevy_utilitarian",
@@ -1254,6 +1255,7 @@ dependencies = [
 [[package]]
 name = "bevy_video_glitch"
 version = "0.2.0"
+source = "git+https://github.com/DylanRJohnston/bevy_video_glitch#294e0cbf6d74fd15423dfa3610fd719f10fc5d05"
 dependencies = [
  "bevy",
 ]

@@ -1,4 +1,9 @@
-use bevy::{ecs::system::SystemParam, math::Affine2, prelude::*, utils::HashMap};
+use bevy::{
+    ecs::system::{EntityCommands, SystemParam},
+    math::Affine2,
+    prelude::*,
+    utils::HashMap,
+};
 use bevy_firework::{
     bevy_utilitarian::prelude::{Gradient, ParamCurve, RandF32, RandValue, RandVec3},
     core::{BlendMode, ParticleSpawnerBundle, ParticleSpawnerSettings},
@@ -200,38 +205,62 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .actions([Action::Forward])
             .block((-2, 0), (2, 0), Tile::Basic)
             .insert([((-2, 0), Tile::DEFAULT_START), ((2, 0), Tile::Finish)])
+            .insert(from_pictogram(&["🧑🟦🟦🟦🟩"]))
             .build()
             .into(),
         LevelBuilder::new()
             .name("Arbitrary")
             .action_limit(2)
             .actions([Action::Forward, Action::Right])
-            .block((-2, -2), (2, 2), Tile::Basic)
-            .insert([((-2, -2), Tile::DEFAULT_START), ((2, 2), Tile::Finish)])
+            .insert(from_pictogram(&[
+                "🧑🟦🟦🟦",
+                "🟦🟦🟦🟦",
+                "🟦🟦🟦🟦",
+                "🟦🟦🟦🟩",
+            ]))
             .build()
             .into(),
         LevelBuilder::new()
             .name("Pothole")
             .action_limit(2)
-            .block((-2, -2), (2, 2), Tile::Basic)
-            .insert([((-2, 2), Tile::DEFAULT_START), ((2, -2), Tile::Finish)])
-            .remove([(2, -1)])
+            .insert(from_pictogram(&[
+                "🟦🟦🟦🟩",
+                "🟦🟦🟦⬛",
+                "🟦🟦🟦🟦",
+                "🧑🟦🟦🟦",
+            ]))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Noise")
+            .action_limit(3)
+            .insert(transform(
+                ANTI_CLOCKWISE,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🟦🟦🟦🟦🟦",
+                    "🟦⬛⬛🟦🟩",
+                    "🟦⬛🟦🟦🟦",
+                    "👩🟦🟦🟦🟦",
+                ]),
+            ))
             .build()
             .into(),
         LevelBuilder::new()
             .name("Obstructions")
             .action_limit(3)
             .command_challenge(2)
-            .block((-1, -1), (1, 1), Tile::Basic)
-            .insert([
-                ((-1, -1), Tile::DEFAULT_START),
-                ((1, 1), Tile::Finish),
-                ((0, 0), Tile::Wall),
-                ((0, 2), Tile::Wall),
-                ((0, -2), Tile::Wall),
-                ((2, 0), Tile::Wall),
-                ((-2, 0), Tile::Wall),
-            ])
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬛⬜⬛⬛",
+                    "⬛🧑🟦🟦⬛",
+                    "⬜🟦⬜🟦⬜",
+                    "⬛🟦🟦🟩⬛",
+                    "⬛⬛⬜⬛⬛",
+                ]),
+            ))
             .build()
             .into(),
         LevelBuilder::new()
@@ -240,21 +269,17 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .command_challenge(3)
             .step_challenge(8)
             .waste_challenge(22)
-            .block((-1, -1), (1, 1), Tile::Basic)
-            .block((-3, -1), (3, -1), Tile::Basic)
-            .block((-3, 1), (3, 1), Tile::Basic)
-            .insert([
-                ((0, 0), Tile::Wall),
-                ((1, 2), Tile::Wall),
-                ((1, -2), Tile::Wall),
-                ((-2, -2), Tile::Wall),
-                ((-2, 2), Tile::Wall),
-                ((-3, -2), Tile::DEFAULT_START),
-                ((-3, 2), Tile::Basic),
-                ((3, -1), Tile::Finish),
-                ((3, 1), Tile::Finish),
-            ])
-            .insert([])
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🧑⬜⬛⬛⬜⬛⬛",
+                    "🟦🟦🟦🟦🟦🟦🟩",
+                    "⬛⬛🟦⬜🟦⬛⬛",
+                    "🟦🟦🟦🟦🟦🟦🟩",
+                    "🟦⬜⬛⬛⬜⬛⬛",
+                ]),
+            ))
             .build()
             .into(),
         LevelBuilder::new()
@@ -263,17 +288,18 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .command_challenge(4)
             .step_challenge(8)
             .waste_challenge(13)
-            .block((-3, -2), (-1, -1), Tile::Basic)
-            .block((-3, 1), (-1, 2), Tile::Basic)
-            .block((-1, -1), (0, 1), Tile::Basic)
-            .block((1, 0), (2, 0), Tile::Basic)
-            .insert([
-                ((-3, 2), Tile::DEFAULT_START),
-                ((3, 0), Tile::Finish),
-                ((-1, 0), Tile::Wall),
-                ((-1, -2), Tile::Wall),
-                ((-1, 2), Tile::Wall),
-            ])
+            .waste_challenge(22)
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🟦🟦⬜⬛⬛⬛⬛",
+                    "🟦🟦🟦🟦⬛⬛⬛",
+                    "⬛⬛⬜🟦🟦🟦🟩",
+                    "🟦🟦🟦🟦⬛⬛⬛",
+                    "🧑🟦⬜⬛⬛⬛⬛",
+                ]),
+            ))
             .build()
             .into(),
         LevelBuilder::new()
@@ -282,17 +308,16 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .command_challenge(4)
             .step_challenge(7)
             .waste_challenge(14)
-            .block((-2, -1), (3, 0), Tile::Basic)
-            .insert([
-                ((-2, 0), Tile::DEFAULT_START),
-                ((-2, -1), Tile::Wall),
-                ((-1, -1), Tile::Wall),
-                ((0, 1), Tile::Wall),
-                ((1, 0), Tile::Wall),
-                ((2, -2), Tile::Wall),
-                ((3, -1), Tile::Wall),
-                ((2, 0), Tile::Finish),
-            ])
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬛⬛⬛⬜⬛",
+                    "⬜⬜🟦🟦🟦⬜",
+                    "🧑🟦🟦⬜🟩🟦",
+                    "⬛⬛⬜⬛⬛⬛",
+                ]),
+            ))
             .build()
             .into(),
         LevelBuilder::new()
@@ -410,47 +435,161 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Divert")
+            .action_limit(1)
+            .insert(from_pictogram(&[
+                #[rustfmt::ignore]
+                "🧑🟦🔃",
+                "⬛⬛🟦",
+                "⬛⬛🟩",
+            ]))
+            .build()
+            .into(),
+        LevelBuilder::new()
             .name("Pivot")
-            .action_limit(1)
-            // .command_challenge(4)
-            // .step_challenge(8)
-            // .waste_challenge(15)
+            .action_limit(2)
             .insert(from_pictogram(&[
                 #[rustfmt::ignore]
-                "🧑🟦🟦🔃",
-                "⬛⬛⬛🟦",
-                "⬛⬛⬛🟦",
-                "⬛⬛⬛🟩",
+                "🧑🔃🟩",
             ]))
             .build()
             .into(),
         LevelBuilder::new()
-            .name("ZigZag")
-            .action_limit(1)
+            .name("Twirl")
+            .action_limit(4)
             .insert(from_pictogram(&[
                 #[rustfmt::ignore]
-                "⬛⬛⬛🟩",
-                "⬛⬛🔃🔄",
-                "⬛🔃🔄⬛",
-                "🧑🔄⬛",
+                "🧑🔃🔃🔃🔃🔃🟩",
             ]))
             .build()
             .into(),
         LevelBuilder::new()
-            .name("Spinors")
+            .name("Dizzy")
+            .action_limit(4)
+            .insert(transform(
+                CLOCKWISE,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬛⬛⬛🟩",
+                    "⬛⬛⬛⬛🔃",
+                    "⬛⬛⬛⬛🔃",
+                    "⬛⬛⬛⬛🔃",
+                    "🧑🔃🔃🔃🟦",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Zigzag")
+            .action_limit(4)
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🧑🔄🔄⬛⬛⬛",
+                    "⬛⬛🔄⬛⬛⬛",
+                    "⬛⬛🔄🔄🟩⬛",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Alternating")
+            .action_limit(4)
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🧑🔄🔃🔄🔃🔄🔃🟩",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Chunks")
+            .action_limit(4)
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🧑🔄🔄🔃🔃🔄🔄🟩",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Chess")
             .action_limit(5)
-            .command_challenge(2)
-            .step_challenge(10)
-            .waste_challenge(36)
-            .insert(from_pictogram(&[
-                #[rustfmt::ignore]
-                "🔃🔃🔄🟩",
-                "🔃🔃🔄🟦",
-                "🔄🔄🔃🔄",
-                "🔃🔄🔃🔄",
-                "🟦🔄🔃🔃",
-                "🧑🔃🔄🔃",
-            ]))
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🔄🔃🔄🔃🔄🔃🟩",
+                    "🔃🔄🔃🔄🔃🔄🔃",
+                    "🔄🔃🔄🔃🔄🔃🔄",
+                    "🧑🔄🔃🔄🔃🔄🔃",
+                ]),
+            ))
+            .build()
+            .into(),
+        Scene::Start,
+        LevelBuilder::new()
+            .name("Progress")
+            .actions([Action::Forward])
+            .action_limit(1)
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬛⬜",
+                    "🟩🧑🔄",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Support")
+            .action_limit(3)
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬜",
+                    "🧑🔄",
+                    "⬛🟦",
+                    "🟩🟦",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Trapped")
+            .action_limit(4)
+            .insert(transform(
+                CLOCKWISE,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬜⬛⬛⬛",
+                    "🧑🔄🟦⬛⬛",
+                    "⬛⬜🟦🟦🟩",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Snail")
+            .action_limit(3)
+            .insert(transform(
+                ANTI_CLOCKWISE,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬜",
+                    "🧑🔄",
+                    "🟦🟦",
+                    "⬛🔃",
+                    "⬛🟩",
+                ]),
+            ))
             .build()
             .into(),
         LevelBuilder::new()
@@ -475,7 +614,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .into(),
         LevelBuilder::new()
             .name("Popsicle")
-            .action_limit(5)
+            .action_limit(7)
             .command_challenge(5)
             .step_challenge(17)
             .waste_challenge(58)
@@ -483,13 +622,48 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
                 IDENTITY,
                 from_pictogram(&[
                     #[rustfmt::ignore]
-                    "⬜⬜⬜⬜⬜",
+                    "⬛⬜⬜⬜⬛",
                     "⬜🔄🟦🔃⬜",
                     "⬜🟦🟦🔃⬜",
                     "⬜🔄🟦🔃⬜",
-                    "⬜🟦🔃🟦⬜",
+                    "⬜🟦⬛🟦⬜",
                     "⬜🔄⬛🔃⬜",
                     "⬛🧑⬛🟩⬛",
+                ]),
+            ))
+            .build()
+            .into(),
+        // LevelBuilder::new()
+        //     .name("Spinors")
+        //     .action_limit(5)
+        //     .command_challenge(2)
+        //     .step_challenge(10)
+        //     .waste_challenge(36)
+        //     .insert(from_pictogram(&[
+        //         #[rustfmt::ignore]
+        //         "🔃🔃🔄🟩",
+        //         "🔃🔃🔄🟦",
+        //         "🔄🔄🔃🔄",
+        //         "🔃🔄🔃🔄",
+        //         "🟦🔄🔃🔃",
+        //         "🧑🔃🔄🔃",
+        //     ]))
+        //     .build()
+        //     .into(),
+        LevelBuilder::new()
+            .name("Swirl")
+            .action_limit(4)
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬛⬛⬛⬛⬜⬛",
+                    "⬛🧑🏂🔄🏂🔄⬛",
+                    "⬛⬛🏂🏂🏂🏂⬛",
+                    "⬛🟩🏂⬛🏂🔄⬛",
+                    "⬛🏂🏂🏂🏂🏂⬛",
+                    "⬛🔄🏂🔄🏂🔄⬜",
+                    "⬛⬜⬛⬛⬛⬛⬛",
                 ]),
             ))
             .build()
@@ -747,11 +921,13 @@ fn create_textures(
 
     let cw_rot = materials.add(StandardMaterial {
         base_color_texture: Some(textures.cw_rot.clone()),
+        base_color: Color::srgb_u8(0xff, 0x7c, 0x5D),
         ..default()
     });
 
     let ccw_rot = materials.add(StandardMaterial {
-        base_color_texture: Some(textures.cw_rot.clone()),
+        base_color_texture: Some(textures.ccw_rot.clone()),
+        base_color: Color::srgb_u8(0xff, 0x7c, 0x5D),
         ..default()
     });
 
@@ -895,7 +1071,7 @@ fn spawn_level(
                             Tile::CCWRot => tile_material.ccw_rot.clone(),
                         },
                         transform: Transform {
-                            translation: position - Vec3::Y * 10.0,
+                            translation: position - Vec3::Y * 20.0,
                             rotation: match tile {
                                 // Tile::Ice => Quat::from_rotation_y(
                                 //     rand::thread_rng().gen_range(0..4) as f32
@@ -911,7 +1087,7 @@ fn spawn_level(
                         ..default()
                     },
                     Animator::new(Tween::new(
-                        EaseFunction::CubicOut,
+                        EaseFunction::QuadraticOut,
                         Duration::from_secs_f32(1. + rand::random::<f32>()),
                         TransformPositionLens {
                             start: position - Vec3::Y * 10.0,
@@ -976,7 +1152,9 @@ fn despawn_level(
         }
 
         commands.spawn(DelayedCommand::new(2., move |commands| {
-            commands.entity(level_root).despawn_recursive();
+            commands
+                .get_entity(level_root)
+                .map(EntityCommands::despawn_recursive);
         }));
     }
 }

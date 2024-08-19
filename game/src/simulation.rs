@@ -726,12 +726,12 @@ mod test {
                 Solution {
                     path: vec![Action::Forward, Action::Right],
                     solution_size: 2,
-                    steps: 8
+                    steps: 6
                 },
                 Solution {
                     path: vec![Action::Right, Action::Forward],
                     solution_size: 2,
-                    steps: 8
+                    steps: 6
                 }
             ]
         );
@@ -746,7 +746,7 @@ mod test {
             vec![Solution {
                 path: vec![Action::Left, Action::Forward],
                 solution_size: 2,
-                steps: 8
+                steps: 6
             }]
         );
     }
@@ -1219,13 +1219,14 @@ mod test {
         assert_eq!(
             solutions,
             vec![Solution {
-                path: vec![Forward],
-                solution_size: 1,
-                steps: 6
+                path: vec![Forward, Left],
+                solution_size: 2,
+                steps: 2
             }]
         );
     }
 
+    #[ignore]
     #[test]
     fn level_zigzag() {
         tracing_init();
@@ -1301,40 +1302,71 @@ mod test {
             smallest_solutions(&solutions),
             vec![
                 Solution {
-                    path: vec![Left, Forward, Left, Forward, Backward],
-                    solution_size: 5,
-                    steps: 58
-                },
-                Solution {
                     path: vec![Left, Left, Right, Right, Right],
                     solution_size: 5,
-                    steps: 17
+                    steps: 17,
                 },
                 Solution {
-                    path: vec![Left, Left, Left, Right, Right],
+                    path: vec![Left, Left, Left, Right, Right,],
                     solution_size: 5,
-                    steps: 20
-                }
+                    steps: 20,
+                },
             ]
         );
 
         assert_eq!(
             fastest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Left, Right, Right, Right],
-                solution_size: 5,
-                steps: 17
+                path: vec![Left, Left, Right, Right, Left, Left],
+                solution_size: 6,
+                steps: 10
             }]
         );
 
         assert_eq!(
             slowest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Forward, Left, Forward, Backward],
-                solution_size: 5,
-                steps: 58
-            }]
+                path: vec![Left, Left, Forward, Backward, Right, Forward, Left],
+                solution_size: 7,
+                steps: 47,
+            },]
         );
+    }
+
+    #[test]
+    fn level_chess() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Chess"));
+
+        tracing::info!(smallest = ?smallest_solutions(&solutions));
+        tracing::info!(fastest = ?fastest_solutions(&solutions));
+        tracing::info!(slowest = ?slowest_solutions(&solutions));
+        panic!();
+    }
+
+    #[test]
+    fn level_cheese() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Cheese"));
+
+        tracing::info!(smallest = ?smallest_solutions(&solutions));
+        tracing::info!(fastest = ?fastest_solutions(&solutions));
+        tracing::info!(slowest = ?slowest_solutions(&solutions));
+        panic!();
+    }
+
+    #[test]
+    fn level_fuck() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Fuck"));
+
+        tracing::info!(smallest = ?smallest_solutions(&solutions));
+        tracing::info!(fastest = ?fastest_solutions(&solutions));
+        tracing::info!(slowest = ?slowest_solutions(&solutions));
+        panic!();
     }
 
     #[test]

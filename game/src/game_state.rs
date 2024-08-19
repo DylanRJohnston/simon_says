@@ -24,6 +24,15 @@ pub enum GameState {
     Paused,
 }
 
+#[derive(SubStates, Clone, PartialEq, Eq, Debug, Hash, Default)]
+#[source(GameState = GameState::InGame)]
+pub enum LevelState {
+    #[default]
+    Loading,
+    Loaded,
+    Unloading,
+}
+
 fn setup(pkv: Res<PkvStore>, mut state: ResMut<ChallengeState>) {
     if let Ok(from_storage) = pkv.get::<ChallengeState>("challenge_state") {
         *state = from_storage;

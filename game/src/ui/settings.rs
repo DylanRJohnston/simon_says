@@ -246,7 +246,7 @@ fn create_settings_ui(
                         .spawn(NodeBundle {
                             style: Style {
                                 display: Display::Grid,
-                                grid_template_columns: vec![RepeatedGridTrack::fr(5, 1.)],
+                                grid_template_columns: vec![RepeatedGridTrack::fr(6, 1.)],
                                 grid_auto_rows: vec![GridTrack::fr(1.)],
                                 row_gap: Val::Px(UI_CONTAINER_GAP),
                                 column_gap: Val::Px(UI_CONTAINER_GAP),

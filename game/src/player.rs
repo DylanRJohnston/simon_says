@@ -333,14 +333,16 @@ fn despawn_player(
         let player = *player;
 
         commands.spawn(DelayedCommand::new(0.3, move |commands| {
-            commands.entity(entity).insert(Animator::new(Tween::new(
-                EaseFunction::QuadraticIn,
-                Duration::from_secs_f32(1.0),
-                TransformPositionLens {
-                    start: Vec3::from(player),
-                    end: Vec3::from(player) + Vec3::Y * 10.,
-                },
-            )));
+            commands.get_entity(entity).map(|mut commands| {
+                commands.insert(Animator::new(Tween::new(
+                    EaseFunction::QuadraticIn,
+                    Duration::from_secs_f32(1.0),
+                    TransformPositionLens {
+                        start: Vec3::from(player),
+                        end: Vec3::from(player) + Vec3::Y * 10.,
+                    },
+                )));
+            });
         }));
     }
 }
