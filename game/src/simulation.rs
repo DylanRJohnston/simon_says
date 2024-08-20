@@ -188,16 +188,14 @@ mod test {
         pub steps: usize,
     }
 
-    fn action_iter(action_list: &[Action]) -> impl Iterator<Item = Action> + Clone {
-        Vec::from(action_list).into_iter()
+    fn action_iter(action_list: &[Action]) -> impl Iterator<Item = Action> + Clone + '_ {
+        action_list.into_iter().copied()
     }
 
-    fn solution_iter(level: &Level) -> impl Iterator<Item = Vec<Action>> {
-        let actions = Rc::new(level.actions.clone());
-
+    fn solution_iter(level: &Level) -> impl Iterator<Item = Vec<Action>> + '_ {
         (1..=level.action_limit).flat_map(move |depth| {
             (1..=depth)
-                .map(|_| action_iter(&actions))
+                .map(|_| action_iter(&level.actions))
                 .multi_cartesian_product()
         })
     }
@@ -239,8 +237,8 @@ mod test {
                     .all(|(_, event)| matches!(event, Some(SimulationEvent::Finished)))
                 {
                     solutions.push(Solution {
-                        path: plan.clone(),
                         solution_size: plan.len(),
+                        path: plan,
                         steps: step_count + 1,
                     });
                     break;
@@ -272,7 +270,7 @@ mod test {
             ..default()
         })
         .map(|plan| {
-            ActionPlan(plan.clone())
+            ActionPlan(plan)
                 .canonicalize_rotation()
                 .canonicalize_mirror()
         })
