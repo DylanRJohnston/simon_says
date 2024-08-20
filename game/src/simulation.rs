@@ -752,6 +752,20 @@ mod test {
     }
 
     #[test]
+    fn level_noise() {
+        tracing_init();
+
+        assert_eq!(
+            depth_first_search(level_from_name("Noise")),
+            vec![Solution {
+                path: vec![Left, Left, Forward],
+                solution_size: 3,
+                steps: 6
+            }]
+        );
+    }
+
+    #[test]
     fn level_obstructions() {
         tracing_init();
 
@@ -985,6 +999,53 @@ mod test {
     }
 
     #[test]
+    fn level_rift() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Rift"));
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Left, Forward, Forward, Right, Right, Backward],
+                solution_size: 6,
+                steps: 24
+            }],
+            "smallest"
+        );
+        assert_eq!(
+            fastest_solutions(&solutions),
+            vec![
+                Solution {
+                    path: vec![Right, Backward, Right, Forward, Forward, Forward, Left],
+                    solution_size: 7,
+                    steps: 14
+                },
+                Solution {
+                    path: vec![Left, Forward, Forward, Forward, Right, Backward, Right],
+                    solution_size: 7,
+                    steps: 14
+                },
+                Solution {
+                    path: vec![Left, Forward, Forward, Right, Right, Right, Backward],
+                    solution_size: 7,
+                    steps: 14
+                }
+            ],
+            "fastest"
+        );
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Left, Forward, Forward, Right, Right, Backward],
+                solution_size: 6,
+                steps: 24
+            }],
+            "slowest"
+        );
+    }
+
+    #[test]
     fn level_overshoot() {
         tracing_init();
 
@@ -1164,49 +1225,36 @@ mod test {
     }
 
     #[test]
-    fn level_rift() {
+    fn level_divert() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_name("Rift"));
+        let solutions = depth_first_search(level_from_name("Divert"));
 
         assert_eq!(
             smallest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Forward, Forward, Right, Right, Backward],
-                solution_size: 6,
-                steps: 24
-            }],
-            "smallest"
+                path: vec![Forward],
+                solution_size: 1,
+                steps: 4
+            }]
         );
+
         assert_eq!(
             fastest_solutions(&solutions),
-            vec![
-                Solution {
-                    path: vec![Right, Backward, Right, Forward, Forward, Forward, Left],
-                    solution_size: 7,
-                    steps: 14
-                },
-                Solution {
-                    path: vec![Left, Forward, Forward, Forward, Right, Backward, Right],
-                    solution_size: 7,
-                    steps: 14
-                },
-                Solution {
-                    path: vec![Left, Forward, Forward, Right, Right, Right, Backward],
-                    solution_size: 7,
-                    steps: 14
-                }
-            ],
-            "fastest"
+            vec![Solution {
+                path: vec![Forward],
+                solution_size: 1,
+                steps: 4
+            }]
         );
+
         assert_eq!(
             slowest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Forward, Forward, Right, Right, Backward],
-                solution_size: 6,
-                steps: 24
-            }],
-            "slowest"
+                path: vec![Forward],
+                solution_size: 1,
+                steps: 4
+            }]
         );
     }
 
@@ -1217,16 +1265,129 @@ mod test {
         let solutions = depth_first_search(level_from_name("Pivot"));
 
         assert_eq!(
-            solutions,
+            smallest_solutions(&solutions),
             vec![Solution {
                 path: vec![Forward, Left],
                 solution_size: 2,
                 steps: 2
-            }]
+            }],
+            "smallest solutions"
+        );
+
+        // assert_eq!(
+        //     fastest_solutions(&solutions),
+        //     vec![Solution {
+        //         path: vec![Forward, Left],
+        //         solution_size: 2,
+        //         steps: 2
+        //     }],
+        //     "fastest solutions",
+        // );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Right, Left, Backward],
+                solution_size: 4,
+                steps: 4
+            }],
+            "slowest solutions",
         );
     }
 
-    #[ignore]
+    #[test]
+    fn level_twirl() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Twirl"));
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![
+                Solution {
+                    path: vec![Forward, Left, Forward, Right,],
+                    solution_size: 4,
+                    steps: 10,
+                },
+                Solution {
+                    path: vec![Forward, Left, Backward, Right,],
+                    solution_size: 4,
+                    steps: 6,
+                },
+                Solution {
+                    path: vec![Forward, Left, Backward, Left,],
+                    solution_size: 4,
+                    steps: 10,
+                },
+            ],
+            "smallest solutions"
+        );
+
+        assert_eq!(
+            fastest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Left, Backward, Right,],
+                solution_size: 4,
+                steps: 6,
+            }],
+            "fastest solutions",
+        );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![
+                Solution {
+                    path: vec![Forward, Left, Forward, Right,],
+                    solution_size: 4,
+                    steps: 10,
+                },
+                Solution {
+                    path: vec![Forward, Left, Backward, Left,],
+                    solution_size: 4,
+                    steps: 10,
+                }
+            ],
+            "slowest solutions",
+        );
+    }
+
+    #[test]
+    fn level_dizzy() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Dizzy"));
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Forward, Left, Backward],
+                solution_size: 4,
+                steps: 8,
+            }],
+            "smallest solutions"
+        );
+
+        assert_eq!(
+            fastest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Forward, Left, Backward],
+                solution_size: 4,
+                steps: 8,
+            }],
+            "fastest solutions",
+        );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Forward, Left, Backward],
+                solution_size: 4,
+                steps: 8,
+            }],
+            "slowest solutions",
+        );
+    }
+
     #[test]
     fn level_zigzag() {
         tracing_init();
@@ -1234,15 +1395,407 @@ mod test {
         let solutions = depth_first_search(level_from_name("ZigZag"));
 
         assert_eq!(
-            solutions,
+            smallest_solutions(&solutions),
             vec![Solution {
-                path: vec![Forward],
-                solution_size: 1,
-                steps: 6
-            }]
+                path: vec![Forward, Right, Left, Forward,],
+                solution_size: 4,
+                steps: 10,
+            },],
+            "smallest solutions"
+        );
+
+        // assert_eq!(fastest_solutions(&solutions), vec![], "fastest solutions",);
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![
+                Solution {
+                    path: vec![Forward, Right, Forward, Left, Right, Forward, Left, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Forward, Left, Right, Backward, Right, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Forward, Left, Right, Backward, Backward, Right,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Forward, Left, Backward, Right, Left, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Forward, Forward, Left, Right, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Forward, Forward, Left, Backward, Right,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Forward, Left, Forward, Left, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Forward, Left, Backward, Right, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Forward, Left, Backward, Backward, Right,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Backward, Right, Forward, Left, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Backward, Right, Backward, Right, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Backward, Right, Backward, Backward, Right,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+                Solution {
+                    path: vec![Forward, Right, Left, Backward, Backward, Right, Left, Forward,],
+                    solution_size: 8,
+                    steps: 18,
+                },
+            ],
+            "slowest solutions",
         );
     }
 
+    #[test]
+    fn level_binary() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Binary"));
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Right],
+                solution_size: 2,
+                steps: 7,
+            },],
+            "smallest solutions"
+        );
+
+        // // assert_eq!(fastest_solutions(&solutions), vec![], "fastest solutions",);
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Right, Backward, Right, Backward, Right,],
+                solution_size: 6,
+                steps: 19,
+            },],
+            "slowest solutions",
+        );
+    }
+
+    #[test]
+    fn level_two_step() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Two-Step"));
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![
+                Solution {
+                    path: vec![Forward, Right, Forward, Left,],
+                    solution_size: 4,
+                    steps: 17,
+                },
+                Solution {
+                    path: vec![Forward, Right, Backward, Right,],
+                    solution_size: 4,
+                    steps: 7,
+                },
+            ],
+            "smallest solutions"
+        );
+
+        assert_eq!(
+            fastest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Right, Backward, Right,],
+                solution_size: 4,
+                steps: 7,
+            },],
+            "fastest solutions",
+        );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Right, Forward, Left,],
+                solution_size: 4,
+                steps: 17,
+            },],
+            "slowest solutions",
+        );
+    }
+
+    #[test]
+    fn level_chess() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Chess"));
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Left, Right, Forward, Right,],
+                solution_size: 4,
+                steps: 9,
+            },],
+            "smallest solutions"
+        );
+
+        // assert_eq!(
+        //     fastest_solutions(&solutions),
+        //     vec![Solution {
+        //         path: vec![Left, Right, Forward, Right,],
+        //         solution_size: 4,
+        //         steps: 9,
+        //     }],
+        //     "fastest solutions",
+        // );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Left, Right, Backward, Right, Right],
+                solution_size: 5,
+                steps: 25,
+            }],
+            "slowest solutions",
+        );
+    }
+
+    #[test]
+    fn level_restricted() {
+        tracing_init();
+
+        let level = level_from_name("Restricted");
+        let solutions = depth_first_search(level);
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Forward],
+                solution_size: level.command_challenge.unwrap_or_default(),
+                steps: 6
+            }],
+            "smallest solutions"
+        );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Forward, Forward, Backward],
+                solution_size: 4,
+                steps: level.waste_challenge.unwrap_or_default()
+            }],
+            "slowest solutions",
+        );
+    }
+
+    #[test]
+    fn level_progress() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Progress"));
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward],
+                solution_size: 1,
+                steps: 4,
+            },],
+            "smallest solutions"
+        );
+
+        // assert_eq!(
+        //     fastest_solutions(&solutions),
+        //     vec![
+        //         Solution {
+        //             path: vec![Forward],
+        //             solution_size: 1,
+        //             steps: 4,
+        //         },
+        //         Solution {
+        //             path: vec![Forward, Forward],
+        //             solution_size: 2,
+        //             steps: 4,
+        //         }
+        //     ],
+        //     "fastest solutions",
+        // );
+
+        // assert_eq!(slowest_solutions(&solutions), vec![], "slowest solutions",);
+    }
+
+    #[test]
+    fn level_support() {
+        tracing_init();
+
+        let solutions = depth_first_search(level_from_name("Support"));
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Forward, Right],
+                solution_size: 3,
+                steps: 6
+            }],
+            "smallest solutions"
+        );
+
+        // assert_eq!(fastest_solutions(&solutions), vec![], "fastest solutions",);
+
+        // assert_eq!(slowest_solutions(&solutions), vec![], "slowest solutions",);
+    }
+
+    #[test]
+    fn level_snail() {
+        tracing_init();
+
+        let level = level_from_name("Snail");
+        let solutions = depth_first_search(level);
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Left, Backward,],
+                solution_size: 3,
+                steps: 7,
+            },],
+            "smallest solutions"
+        );
+
+        assert_eq!(
+            fastest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Left, Backward,],
+                solution_size: 3,
+                steps: 7,
+            },],
+            "fastest solutions",
+        );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Left, Backward,],
+                solution_size: 3,
+                steps: 7,
+            },],
+            "slowest solutions",
+        );
+    }
+
+    #[test]
+    fn level_trapped() {
+        tracing_init();
+
+        let level = level_from_name("Trapped");
+        let solutions = depth_first_search(level);
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Right, Backward],
+                solution_size: level.command_challenge.unwrap_or_default(),
+                steps: 9
+            },],
+            "smallest solutions"
+        );
+
+        assert_eq!(
+            fastest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Left, Left, Forward],
+                solution_size: 4,
+                steps: level.step_challenge.unwrap_or_default()
+            },],
+            "fastest solutions",
+        );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Right, Forward, Backward, Backward, Right,],
+                solution_size: 5,
+                steps: level.waste_challenge.unwrap_or_default(),
+            },],
+            "slowest solutions",
+        );
+    }
+
+    #[test]
+    fn level_squeeze() {
+        tracing_init();
+
+        let level = level_from_name("Squeeze");
+        let solutions = depth_first_search(level);
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![
+                Solution {
+                    path: vec![Forward, Right, Forward, Left, Right],
+                    solution_size: level.command_challenge.unwrap_or_default(),
+                    steps: 21
+                },
+                Solution {
+                    path: vec![Left, Right, Forward, Right, Forward],
+                    solution_size: level.command_challenge.unwrap_or_default(),
+                    steps: 23
+                }
+            ],
+            "smallest solutions"
+        );
+
+        assert_eq!(
+            fastest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Right, Forward, Forward, Left, Right],
+                solution_size: 6,
+                steps: level.step_challenge.unwrap_or_default()
+            }],
+            "fastest solutions",
+        );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Left, Right, Forward, Right, Forward],
+                solution_size: 5,
+                steps: level.waste_challenge.unwrap_or_default(),
+            }],
+            "slowest solutions",
+        );
+    }
+
+    #[ignore]
     #[test]
     fn level_spinors() {
         tracing_init();
@@ -1292,7 +1845,8 @@ mod test {
     fn level_popsicle() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_name("Popsicle"));
+        let level = level_from_name("Popsicle");
+        let solutions = depth_first_search(level);
 
         // tracing::info!(smallest = ?smallest_solutions(&solutions));
         // tracing::info!(fastest = ?fastest_solutions(&solutions));
@@ -1303,12 +1857,12 @@ mod test {
             vec![
                 Solution {
                     path: vec![Left, Left, Right, Right, Right],
-                    solution_size: 5,
+                    solution_size: level.command_challenge.unwrap_or_default(),
                     steps: 17,
                 },
                 Solution {
                     path: vec![Left, Left, Left, Right, Right,],
-                    solution_size: 5,
+                    solution_size: level.command_challenge.unwrap_or_default(),
                     steps: 20,
                 },
             ]
@@ -1319,7 +1873,7 @@ mod test {
             vec![Solution {
                 path: vec![Left, Left, Right, Right, Left, Left],
                 solution_size: 6,
-                steps: 10
+                steps: level.step_challenge.unwrap_or_default()
             }]
         );
 
@@ -1328,85 +1882,50 @@ mod test {
             vec![Solution {
                 path: vec![Left, Left, Forward, Backward, Right, Forward, Left],
                 solution_size: 7,
-                steps: 47,
+                steps: level.waste_challenge.unwrap_or_default(),
             },]
         );
     }
 
     #[test]
-    fn level_chess() {
+    fn level_swirl() {
         tracing_init();
 
-        let solutions = depth_first_search(level_from_name("Chess"));
+        let level = level_from_name("Swirl");
+        let solutions = depth_first_search(level);
 
-        tracing::info!(smallest = ?smallest_solutions(&solutions));
-        tracing::info!(fastest = ?fastest_solutions(&solutions));
-        tracing::info!(slowest = ?slowest_solutions(&solutions));
-        panic!();
-    }
-
-    #[test]
-    fn level_cheese() {
-        tracing_init();
-
-        let solutions = depth_first_search(level_from_name("Cheese"));
-
-        tracing::info!(smallest = ?smallest_solutions(&solutions));
-        tracing::info!(fastest = ?fastest_solutions(&solutions));
-        tracing::info!(slowest = ?slowest_solutions(&solutions));
-        panic!();
-    }
-
-    #[test]
-    fn level_fuck() {
-        tracing_init();
-
-        let solutions = depth_first_search(level_from_name("Fuck"));
-
-        tracing::info!(smallest = ?smallest_solutions(&solutions));
-        tracing::info!(fastest = ?fastest_solutions(&solutions));
-        tracing::info!(slowest = ?slowest_solutions(&solutions));
-        panic!();
-    }
-
-    #[test]
-    fn level_squeeze() {
-        tracing_init();
-
-        let solutions = depth_first_search(level_from_name("Squeeze"));
+        // tracing::info!(smallest = ?smallest_solutions(&solutions));
+        // tracing::info!(fastest = ?fastest_solutions(&solutions));
+        // tracing::info!(slowest = ?slowest_solutions(&solutions));
 
         assert_eq!(
             smallest_solutions(&solutions),
-            vec![
-                Solution {
-                    path: vec![Forward, Right, Forward, Left, Right],
-                    solution_size: 5,
-                    steps: 21
-                },
-                Solution {
-                    path: vec![Left, Right, Forward, Right, Forward],
-                    solution_size: 5,
-                    steps: 23
-                }
-            ]
+            vec![Solution {
+                path: vec![Right, Backward, Backward,],
+                solution_size: level.command_challenge.unwrap_or_default(),
+                steps: 16,
+            },],
+            "smallest solution"
         );
 
         assert_eq!(
             fastest_solutions(&solutions),
             vec![Solution {
-                path: vec![Forward, Right, Forward, Forward, Left, Right],
-                solution_size: 6,
-                steps: 11
-            }]
+                path: vec![Right, Forward, Right, Forward, Right,],
+                solution_size: 5,
+                steps: level.step_challenge.unwrap_or_default(),
+            },],
+            "fastest solution"
         );
 
         assert_eq!(
             slowest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Right, Forward, Right, Forward],
-                solution_size: 5,
-                steps: 23
-            }]
+                path: vec![Right, Backward, Backward,],
+                solution_size: 3,
+                steps: level.waste_challenge.unwrap_or_default(),
+            },],
+            "slowest solution"
         );
     }
 

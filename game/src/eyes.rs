@@ -26,12 +26,18 @@ impl Plugin for EyesPlugin {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum FocusTarget {
+    Camera,
+    Player,
+}
+
 #[derive(Debug, Clone, Component)]
 pub enum Emotion {
     Neutral(Timer),
     Bored(Timer),
     Surprised(Timer),
-    Focused(Timer),
+    Focused { timer: Timer, target: FocusTarget },
 }
 
 const BOREDOM_LOWER_BOUND: f32 = 2.5;
@@ -59,10 +65,13 @@ impl Emotion {
     }
 
     fn focused() -> Self {
-        Self::Focused(Timer::from_seconds(
-            random_range(FOCUSED_LOWER_BOUND, FOCUSED_UPPER_BOUND),
-            TimerMode::Once,
-        ))
+        Self::Focused {
+            timer: Timer::from_seconds(
+                random_range(FOCUSED_LOWER_BOUND, FOCUSED_UPPER_BOUND),
+                TimerMode::Once,
+            ),
+            target: FocusTarget::Player,
+        }
     }
 }
 
@@ -80,14 +89,14 @@ impl Emotion {
         match self {
             Self::Neutral(_) | Self::Bored(_) => 1.,
             Self::Surprised(_) => 1.3,
-            Self::Focused(_) => 0.7,
+            Self::Focused { .. } => 0.7,
         }
     }
 
     pub fn dilation(&self) -> f32 {
         match self {
             Self::Surprised(_) => 1.3,
-            Self::Focused(_) => 0.7,
+            Self::Focused { .. } => 0.7,
             _ => 1.0,
         }
     }
@@ -97,7 +106,7 @@ impl Emotion {
             Self::Neutral(_) => 0.1,
             Self::Bored(_) => 1.0,
             Self::Surprised(_) => 4.0,
-            Self::Focused(_) => 1.0,
+            Self::Focused { .. } => 1.0,
         }
     }
 }
@@ -138,12 +147,13 @@ impl<'w> EyeMaterial<'w> {
 }
 
 fn spawn_eye(
-    mut commands: Commands,
     textures: Res<TextureAssets>,
+    camera: Query<&Transform, With<Camera>>,
+    mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut material: ResMut<Assets<StandardMaterial>>,
 ) {
-    let quad_handle = meshes.add(Rectangle::new(8., 8.));
+    let quad_handle = meshes.add(Rectangle::new(12., 12.));
 
     let eye_material = material.add(StandardMaterial {
         base_color_texture: Some(textures.eye.clone()),
@@ -164,15 +174,21 @@ fn spawn_eye(
     commands.insert_resource(EyeMaterialHandle(eye_material.clone()));
     commands.insert_resource(IrisMaterialHandle(iris_material.clone()));
 
-    for (x, y, z) in [(3.0, 2.0, -6.0), (9.0, -1.0, -3.0), (-3.0, 1.0, -6.0)] {
+    let camera = camera.get_single().unwrap();
+
+    for (x, y, z) in [(3.0, 2.0, -6.0), (9.0, -1.0, -3.0), (-3.0, 0.0, -6.0)] {
+        let transform =
+            Vec3::new(x, y, z) + (Vec3::new(x, y, z) - camera.translation).normalize() * 5.0;
+
         commands
             .spawn((
+                Name::from("Eye"),
                 Eye::default(),
                 Emotion::default(),
                 PbrBundle {
                     mesh: quad_handle.clone(),
                     material: eye_material.clone(),
-                    transform: Transform::from_xyz(x, y, z),
+                    transform: Transform::from_translation(transform),
                     ..default()
                 },
             ))
@@ -195,12 +211,8 @@ fn eye_track_player(
     mut eye: Query<&mut Eye>,
     mut commands: Commands,
 ) {
-    if let Some(player) = players.iter().next() {
-        for mut eye in &mut eye {
-            commands.trigger(PlayerActivity);
-
-            eye.target = player.translation;
-        }
+    if players.iter().next().is_some() {
+        commands.trigger(PlayerActivity);
     }
 }
 
@@ -248,7 +260,7 @@ fn random_boredom_target(position: Vec3, wander: f32) -> Vec3 {
                 rand::random::<f32>() * 3. - 1.5,
                 rand::random::<f32>() * 10. - 5.,
             ))
-    .clamp(Vec3::new(-4., -1., -4.), Vec3::new(4., 2., 4.))
+    .clamp(Vec3::new(-8., -2., -8.), Vec3::new(8., 3., 8.))
 }
 
 fn eye_emotion(
@@ -268,6 +280,11 @@ fn eye_emotion(
                 .map(|it| it.translation)
                 .unwrap_or(Vec3::ZERO)
         });
+
+    let camera_position = camera
+        .get_single()
+        .map(|it| it.translation)
+        .unwrap_or_default();
 
     for (mut eye, mut emotion) in &mut eye {
         match emotion.as_mut() {
@@ -302,8 +319,11 @@ fn eye_emotion(
 
                 *emotion = Emotion::focused();
             }
-            Emotion::Focused(timer) => {
-                eye.target = player_position;
+            Emotion::Focused { timer, target } => {
+                eye.target = match target {
+                    FocusTarget::Camera => camera_position,
+                    FocusTarget::Player => player_position,
+                };
 
                 if !timer.tick(time.delta()).just_finished() {
                     continue;
@@ -318,7 +338,12 @@ fn eye_emotion(
 fn emotion_from_player_activity(_trigger: Trigger<PlayerActivity>, mut eye: Query<&mut Emotion>) {
     for mut emotion in &mut eye {
         match emotion.as_mut() {
-            Emotion::Focused(timer) => timer.reset(),
+            Emotion::Focused { timer, target } => match target {
+                FocusTarget::Player => {
+                    timer.reset();
+                }
+                FocusTarget::Camera => {}
+            },
             Emotion::Bored(_) | Emotion::Neutral(_) => *emotion = Emotion::focused(),
             _ => {}
         }
@@ -361,7 +386,10 @@ fn trigger_talking_animation(
     commands.insert_resource(ChangeColorTimer(Timer::from_seconds(0., TimerMode::Once)));
     for mut emotion in &mut eye {
         match emotion.as_mut() {
-            Emotion::Focused(timer) => timer.reset(),
+            Emotion::Focused { timer, target } => {
+                timer.reset();
+                *target = FocusTarget::Camera
+            }
             Emotion::Bored(_) | Emotion::Neutral(_) => *emotion = Emotion::focused(),
             _ => {}
         }

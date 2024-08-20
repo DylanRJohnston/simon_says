@@ -447,7 +447,8 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .into(),
         LevelBuilder::new()
             .name("Pivot")
-            .action_limit(2)
+            .action_limit(4)
+            .waste_challenge(4)
             .insert(from_pictogram(&[
                 #[rustfmt::ignore]
                 "🧑🔃🟩",
@@ -457,6 +458,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
         LevelBuilder::new()
             .name("Twirl")
             .action_limit(4)
+            .waste_challenge(10)
             .insert(from_pictogram(&[
                 #[rustfmt::ignore]
                 "🧑🔃🔃🔃🔃🔃🟩",
@@ -480,22 +482,29 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
-            .name("Zigzag")
-            .action_limit(4)
+            .name("ZigZag")
+            .action_limit(8)
+            .command_challenge(4)
+            // .step_challenge(10)
+            .waste_challenge(18)
             .insert(transform(
                 IDENTITY,
                 from_pictogram(&[
                     #[rustfmt::ignore]
-                    "🧑🔄🔄⬛⬛⬛",
-                    "⬛⬛🔄⬛⬛⬛",
-                    "⬛⬛🔄🔄🟩⬛",
+                    "🧑🔄🔄⬛⬛⬛⬛",
+                    "⬛⬛🔄⬛⬛⬛⬛",
+                    "⬛⬛🔄🔄🔄⬛⬛",
+                    "⬛⬛⬛⬛🔄⬛⬛",
+                    "⬛⬛⬛⬛🔄🔄🟩",
                 ]),
             ))
             .build()
             .into(),
         LevelBuilder::new()
-            .name("Alternating")
-            .action_limit(4)
+            .name("Binary")
+            .action_limit(6)
+            .command_challenge(2)
+            .waste_challenge(19)
             .insert(transform(
                 IDENTITY,
                 from_pictogram(&[
@@ -506,8 +515,9 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
-            .name("Chunks")
+            .name("Two-Step")
             .action_limit(4)
+            .waste_challenge(17)
             .insert(transform(
                 IDENTITY,
                 from_pictogram(&[
@@ -519,7 +529,9 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .into(),
         LevelBuilder::new()
             .name("Chess")
-            .action_limit(5)
+            .action_limit(6)
+            .command_challenge(4)
+            .waste_challenge(25)
             .insert(transform(
                 IDENTITY,
                 from_pictogram(&[
@@ -532,10 +544,9 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             ))
             .build()
             .into(),
-        Scene::Start,
         LevelBuilder::new()
             .name("Progress")
-            .actions([Action::Forward])
+            .actions([Action::Forward, Action::Left, Action::Right])
             .action_limit(1)
             .insert(transform(
                 IDENTITY,
@@ -563,20 +574,6 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
-            .name("Trapped")
-            .action_limit(4)
-            .insert(transform(
-                CLOCKWISE,
-                from_pictogram(&[
-                    #[rustfmt::ignore]
-                    "⬛⬜⬛⬛⬛",
-                    "🧑🔄🟦⬛⬛",
-                    "⬛⬜🟦🟦🟩",
-                ]),
-            ))
-            .build()
-            .into(),
-        LevelBuilder::new()
             .name("Snail")
             .action_limit(3)
             .insert(transform(
@@ -593,6 +590,63 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .build()
             .into(),
         LevelBuilder::new()
+            .name("Trapped")
+            .action_limit(5)
+            .command_challenge(3)
+            .step_challenge(8)
+            .waste_challenge(14)
+            .insert(transform(
+                CLOCKWISE,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "⬛⬜🟦⬛⬛",
+                    "🧑🔄🟦⬛🟦",
+                    "⬛⬜🟦🟦🟦",
+                    "⬛⬛⬛⬛🟩",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Restricted")
+            .actions([Action::Forward, Action::Backward, Action::Right])
+            .action_limit(4)
+            .command_challenge(2)
+            .waste_challenge(10)
+            .insert(transform(
+                IDENTITY,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🟩🟦⬛",
+                    "🟦🧑🔄",
+                    "⬛🔄⬛",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
+            .name("Swirl")
+            .actions([Action::Forward, Action::Backward, Action::Right])
+            .action_limit(5)
+            .command_challenge(3)
+            .step_challenge(7)
+            .waste_challenge(16)
+            .insert(transform(
+                DOUBLE,
+                from_pictogram(&[
+                    #[rustfmt::ignore]
+                    "🟩🟦⬛⬛⬛⬛",
+                    "⬛🟦⬛⬛⬛⬛",
+                    "⬛🟦🟦⬛⬜⬛",
+                    "⬛⬜🧒🔄🔄⬛",
+                    "⬛⬛🔄⬛🔄⬛",
+                    "⬛⬛🔄🔄🔄⬜",
+                    "⬛⬛⬜⬛⬛⬛",
+                ]),
+            ))
+            .build()
+            .into(),
+        LevelBuilder::new()
             .name("Squeeze")
             .action_limit(6)
             .command_challenge(5)
@@ -602,12 +656,12 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
                 CLOCKWISE,
                 from_pictogram(&[
                     #[rustfmt::ignore]
-                    "⬛🟩🟦🔄⬛",
-                    "⬛⬜🟦⬜⬛",
-                    "⬛🟦🔃🟦⬛",
-                    "⬛🟦🔃🟦⬛",
-                    "⬛🔄⬜🔄⬛",
-                    "⬛🟦🟦🧑⬛",
+                    "🟩🟦🔄",
+                    "⬜🟦⬜",
+                    "⬛🔃⬛",
+                    "🟦🔃🟦",
+                    "⬛⬜🔄",
+                    "⬛🟦🧑",
                 ]),
             ))
             .build()
@@ -616,8 +670,8 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
             .name("Popsicle")
             .action_limit(7)
             .command_challenge(5)
-            .step_challenge(17)
-            .waste_challenge(58)
+            .step_challenge(10)
+            .waste_challenge(47)
             .insert(transform(
                 IDENTITY,
                 from_pictogram(&[
@@ -650,24 +704,6 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
         //     ]))
         //     .build()
         //     .into(),
-        LevelBuilder::new()
-            .name("Swirl")
-            .action_limit(4)
-            .insert(transform(
-                IDENTITY,
-                from_pictogram(&[
-                    #[rustfmt::ignore]
-                    "⬛⬛⬛⬛⬛⬜⬛",
-                    "⬛🧑🏂🔄🏂🔄⬛",
-                    "⬛⬛🏂🏂🏂🏂⬛",
-                    "⬛🟩🏂⬛🏂🔄⬛",
-                    "⬛🏂🏂🏂🏂🏂⬛",
-                    "⬛🔄🏂🔄🏂🔄⬜",
-                    "⬛⬜⬛⬛⬛⬛⬛",
-                ]),
-            ))
-            .build()
-            .into(),
         LevelBuilder::new()
             .name("Blizzard")
             .action_limit(8)
@@ -806,6 +842,7 @@ pub static SCENES: LazyLock<Vec<Scene>> = LazyLock::new(|| {
 
 const ANTI_CLOCKWISE: ((i32, i32), (i32, i32)) = ((0, 1), (1, 0));
 const CLOCKWISE: ((i32, i32), (i32, i32)) = ((0, -1), (1, 0));
+const DOUBLE: ((i32, i32), (i32, i32)) = ((-1, 0), (0, -1));
 const IDENTITY: ((i32, i32), (i32, i32)) = ((1, 0), (0, 1));
 
 fn transform(

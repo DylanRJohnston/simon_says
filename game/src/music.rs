@@ -35,13 +35,16 @@ impl Plugin for MusicPlugin {
             .add_audio_channel::<MusicChannel>()
             .add_audio_channel::<EffectChannel>()
             .add_audio_channel::<DialogueChannel>()
-            .add_systems(OnEnter(GameState::MainMenu), loop_menu_music)
-            .add_systems(OnEnter(GameState::MainMenu), change_music)
-            .add_systems(OnEnter(GameState::InGame), loop_game_music)
-            .add_systems(OnEnter(GameState::InGame), change_music)
-            .add_systems(OnEnter(GameState::Paused), loop_pause_music)
-            .add_systems(OnEnter(GameState::Paused), change_music)
+            .add_systems(
+                Update,
+                loop_menu_music.run_if(in_state(GameState::MainMenu)),
+            )
+            .add_systems(Update, loop_game_music.run_if(in_state(GameState::InGame)))
+            .add_systems(Update, loop_pause_music.run_if(in_state(GameState::Paused)))
             .add_systems(Update, set_volume)
+            .add_systems(OnEnter(GameState::MainMenu), change_music)
+            .add_systems(OnEnter(GameState::InGame), change_music)
+            .add_systems(OnEnter(GameState::Paused), change_music)
             .observe(level_completed)
             .observe(suppress_music)
             .observe(set_music_volume)
@@ -66,7 +69,7 @@ impl MasterVolume {
     pub fn volume(&self) -> f64 {
         match self {
             Self::Muted => 0.0,
-            Self::Unmuted => 0.0,
+            Self::Unmuted => 0.6,
         }
     }
 }
@@ -159,21 +162,31 @@ fn loop_game_music(
     music: Res<MusicAssets>,
     audio: ResMut<AudioChannel<MusicChannel>>,
     mut handles: ResMut<MusicHandles>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
+    mut timer: Local<Timer>,
+    time: Res<Time>,
 ) {
-    if handles.game.is_some() {
+    if !timer.tick(time.delta()).finished() {
         return;
     }
+
+    *timer = Timer::from_seconds(100., TimerMode::Once);
+
+    handles.game.as_ref().and_then(|handle| {
+        audio_instances.get_mut(handle)?.stop(AudioTween::new(
+            Duration::from_secs_f32(10.),
+            AudioEasing::InPowi(2),
+        ))
+    });
 
     handles.game = Some(
         audio
             .play(music.where_am_i.clone())
             .fade_in(AudioTween::new(
-                Duration::from_secs_f32(10.),
+                Duration::from_secs_f32(5.),
                 AudioEasing::OutPowi(2),
             ))
-            .looped()
-            .loop_from(10.)
-            .loop_until(120.)
+            .start_from(15.)
             .handle(),
     );
 }
@@ -181,11 +194,23 @@ fn loop_game_music(
 fn loop_menu_music(
     music: Res<MusicAssets>,
     audio: ResMut<AudioChannel<MusicChannel>>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
     mut handles: ResMut<MusicHandles>,
+    mut timer: Local<Timer>,
+    time: Res<Time>,
 ) {
-    if handles.menu.is_some() {
+    if !timer.tick(time.delta()).finished() {
         return;
     }
+
+    *timer = Timer::from_seconds(80., TimerMode::Once);
+
+    handles.menu.as_ref().and_then(|handle| {
+        audio_instances.get_mut(handle)?.stop(AudioTween::new(
+            Duration::from_secs_f32(5.),
+            AudioEasing::InPowi(2),
+        ))
+    });
 
     handles.menu = Some(
         audio
@@ -194,9 +219,6 @@ fn loop_menu_music(
                 Duration::from_secs_f32(5.),
                 AudioEasing::OutPowi(2),
             ))
-            .looped()
-            .loop_from(10.)
-            .loop_until(100.)
             .handle(),
     );
 }
@@ -204,11 +226,23 @@ fn loop_menu_music(
 fn loop_pause_music(
     music: Res<MusicAssets>,
     audio: ResMut<AudioChannel<MusicChannel>>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
     mut handles: ResMut<MusicHandles>,
+    mut timer: Local<Timer>,
+    time: Res<Time>,
 ) {
-    if handles.pause.is_some() {
+    if !timer.tick(time.delta()).finished() {
         return;
     }
+
+    *timer = Timer::from_seconds(55., TimerMode::Once);
+
+    handles.pause.as_ref().and_then(|handle| {
+        audio_instances.get_mut(handle)?.stop(AudioTween::new(
+            Duration::from_secs_f32(5.),
+            AudioEasing::InPowi(2),
+        ))
+    });
 
     handles.pause = Some(
         audio
@@ -217,9 +251,6 @@ fn loop_pause_music(
                 Duration::from_secs_f32(5.),
                 AudioEasing::OutPowi(2),
             ))
-            .looped()
-            .loop_from(10.)
-            .loop_until(60.)
             .handle(),
     );
 }
