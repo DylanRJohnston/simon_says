@@ -12,15 +12,16 @@ impl Plugin for DelayedCommandPlugin {
 
 #[derive(Component)]
 pub struct DelayedCommand {
-    // This could be FnOnce if we did some mem/swap magic with a no-op closure
-    pub command: Box<dyn FnMut(&mut Commands) + Send + Sync + 'static>,
+    // You need to own a Box<dyn FnOnce> to be able to call it, Bevy ECS normally only lets us borrow data
+    // Using Option lets us take ownership of Box<dyn FnOnce> from the ECS with Option::take
+    pub command: Option<Box<dyn FnOnce(&mut Commands) + Send + Sync + 'static>>,
     pub delay: Timer,
 }
 
 impl DelayedCommand {
-    pub fn new(secs: f32, command: impl FnMut(&mut Commands) + Send + Sync + 'static) -> Self {
+    pub fn new(secs: f32, command: impl FnOnce(&mut Commands) + Send + Sync + 'static) -> Self {
         Self {
-            command: Box::new(command),
+            command: Some(Box::new(command)),
             delay: Timer::new(Duration::from_secs_f32(secs), TimerMode::Once),
         }
     }
@@ -36,7 +37,11 @@ fn run_delayed_commands(
             continue;
         }
 
-        (command.command)(&mut commands);
+        let Some(command) = command.command.take() else {
+            continue;
+        };
+
+        (command)(&mut commands);
         commands.entity(entity).despawn_recursive();
     }
 }

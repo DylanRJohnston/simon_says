@@ -66,31 +66,45 @@ fn main() {
 /// set up a simple 3D scene
 fn setup(mut commands: Commands) {
     // light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 8_000.,
-            shadows_enabled: true,
+    commands.spawn((
+        Name::from("Light"),
+        DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                illuminance: 8_000.,
+                shadows_enabled: true,
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec3::default(),
+                rotation: Quat::from_euler(EulerRot::XYZ, -1.1, -0.8, 0.0),
+                scale: Vec3::ONE,
+            },
             ..default()
         },
-        transform: Transform {
-            translation: Vec3::default(),
-            rotation: Quat::from_euler(EulerRot::XYZ, -1.1, 0.5, 0.0),
-            scale: Vec3::ONE,
-        },
-        ..default()
-    });
+    ));
 
-    let mut transform = Transform::from_xyz(-3., 5.5, 9.0).looking_at(Vec3::ZERO, Vec3::Y);
-    transform.translation += Vec3::Y * 1.0;
+    let mut transform = Transform::from_xyz(-5., 6., 5.).looking_at(Vec3::ZERO, Vec3::Y);
+    // transform.translation += Vec3::Y * 1.0;
 
     // camera
     commands.spawn((
+        Name::from("Camera"),
         Camera3dBundle {
             transform,
             camera: Camera {
                 hdr: false,
                 ..default()
             },
+            projection: Projection::Orthographic(OrthographicProjection {
+                scaling_mode: bevy::render::camera::ScalingMode::FixedVertical(8.0),
+                viewport_origin: Vec2::new(0.5, 0.4),
+                ..default() // near: todo!(),
+                            // far: todo!(),
+                            // viewport_origin: todo!(),
+                            // scaling_mode: todo!(),
+                            // scale: todo!(),
+                            // area: todo!(),
+            }),
             ..default()
         },
         IsDefaultUiCamera,

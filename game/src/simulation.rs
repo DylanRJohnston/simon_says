@@ -1878,7 +1878,7 @@ mod test {
         assert_eq!(
             slowest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Left, Forward, Backward, Right, Forward, Left],
+                path: vec![Left, Left, Right, Right, Right, Forward, Forward],
                 solution_size: 7,
                 steps: level.waste_challenge.unwrap_or_default(),
             },]
@@ -2056,7 +2056,76 @@ mod test {
     // }
 
     #[test]
-    fn convergence() {
+    fn level_duality() {
+        tracing_init();
+
+        let level = level_from_name("Duality");
+        let solutions = depth_first_search(level);
+
+        // tracing::info!(smallest = ?smallest_solutions(&solutions));
+        // tracing::info!(fastest = ?fastest_solutions(&solutions));
+        // tracing::info!(slowest = ?slowest_solutions(&solutions));
+
+        assert_eq!(
+            solutions,
+            vec![Solution {
+                path: vec![Forward, Right, Backward,],
+                solution_size: 3,
+                steps: 6,
+            },],
+        );
+    }
+
+    #[test]
+    fn level_unnamed() {
+        tracing_init();
+
+        let level = level_from_name("Unnamed");
+        let solutions = depth_first_search(level);
+
+        tracing::info!(smallest = ?smallest_solutions(&solutions));
+        tracing::info!(fastest = ?fastest_solutions(&solutions));
+        tracing::info!(slowest = ?slowest_solutions(&solutions));
+        // panic!();
+
+        assert_eq!(
+            smallest_solutions(&solutions),
+            vec![
+                Solution {
+                    path: vec![Forward, Forward, Right, Backward, Right],
+                    solution_size: level.command_challenge.unwrap_or_default(),
+                    steps: 8,
+                },
+                Solution {
+                    path: vec![Forward, Right, Backward, Right, Forward],
+                    solution_size: level.command_challenge.unwrap_or_default(),
+                    steps: 7,
+                },
+            ],
+            "smallest solutions"
+        );
+
+        assert_eq!(
+            fastest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Right, Backward, Right, Forward],
+                solution_size: level.command_challenge.unwrap_or_default(),
+                steps: 7,
+            },]
+        );
+
+        assert_eq!(
+            slowest_solutions(&solutions),
+            vec![Solution {
+                path: vec![Forward, Forward, Right, Backward, Right],
+                solution_size: level.command_challenge.unwrap_or_default(),
+                steps: 8,
+            },]
+        );
+    }
+
+    #[test]
+    fn level_convergence() {
         tracing_init();
 
         let solutions = depth_first_search(level_from_name("Convergence"));
