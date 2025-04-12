@@ -11,7 +11,7 @@ pub struct EndScreenPlugin;
 
 impl Plugin for EndScreenPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(end_game).observe(despawn_endgame);
+        app.add_observer(end_game).add_observer(despawn_endgame);
     }
 }
 
@@ -20,36 +20,35 @@ pub struct EndScreenRoot;
 
 fn end_game(_trigger: Trigger<GameFinished>, mut commands: Commands) {
     commands
-        .spawn((NodeBundle {
-            style: Style {
+        .spawn((
+            Name::new("End Screen Root"),
+            EndScreenRoot,
+            Node {
                 height: Val::Percent(100.0),
                 width: Val::Percent(100.0),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 ..default()
             },
-            ..default()
-        },EndScreenRoot))
+        ))
         .with_children(|container| {
             container
-                .spawn(NodeBundle {
-                    style: Style {
+                .spawn((
+                    Node {
                         width: Val::Px(500.),
                         padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
                         ..default()
                     },
-                    border_radius: BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                    background_color: (*UI_BACKGROUND_COLOR).into(),
-                    ..default()
-                })
+                    BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
+                    BackgroundColor((*UI_BACKGROUND_COLOR).into()),
+                ))
                 .with_children(|container| {
-                    container.spawn(TextBundle {
-                        text: Text::from_section("That's all Simon has to say for now. Thanks for playing and keep an EYE out on Steam for the full release.", TextStyle {
-                            color: *PRIMARY_TEXT_COLOR,
-                            ..default()
-                        }),
-                        ..default()
-                    });
+                    container.spawn((
+                        Text(
+                            "That's all Simon has to say for now. Thanks for playing and keep an EYE out on Steam for the full release.".into()
+                        ),
+                            TextColor(*PRIMARY_TEXT_COLOR),)
+                    );
                 });
         });
 }

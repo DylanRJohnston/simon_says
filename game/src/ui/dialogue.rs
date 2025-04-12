@@ -11,7 +11,11 @@ use crate::{
     music::{DialogueChannel, MasterVolume, SuppressMusicVolume},
 };
 
-use super::{main_menu::Refuse, UI_BACKGROUND_COLOR, UI_CONTAINER_PADDING, UI_CONTAINER_RADIUS};
+use super::{
+    constants::{PRIMARY_TEXT_COLOR, UI_BACKGROUND_COLOR},
+    main_menu::Refuse,
+    UI_CONTAINER_PADDING, UI_CONTAINER_RADIUS,
+};
 
 pub struct DialoguePlugin;
 
@@ -25,10 +29,10 @@ impl Plugin for DialoguePlugin {
                     !matches!(state.get(), GameState::Loading)
                 }),
             )
-            .observe(play_level_dialogue)
-            .observe(level_load)
-            .observe(play_refuse_dialogue)
-            .observe(enqueue_dialogue);
+            .add_observer(play_level_dialogue)
+            .add_observer(level_load)
+            .add_observer(play_refuse_dialogue)
+            .add_observer(enqueue_dialogue);
     }
 }
 
@@ -108,18 +112,18 @@ fn play_dialogue_segment(
 
     commands.trigger(DialogueStarted);
     audio.play(sounds.dialogue[*count].clone());
-    // commands.spawn(DelayedCommand::new(0.1, move |commands| {
+
     commands.trigger(SuppressMusicVolume {
         volume: master_volume.volume().min(0.1),
         leading_edge: Duration::from_secs_f32(0.5),
         middle: Duration::from_secs_f32(dialogue_queue.0.len() as f32 * 5.),
         falling_edge: Duration::from_secs_f32(2.),
     });
-    // }));
 
     let id = commands
-        .spawn(NodeBundle {
-            style: Style {
+        .spawn((
+            Name::new("Dialogue Container"),
+            Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
                 padding: UiRect::all(Val::Px(80.)),
@@ -127,31 +131,26 @@ fn play_dialogue_segment(
                 align_items: AlignItems::FlexEnd,
                 ..default()
             },
-            ..default()
-        })
+        ))
         .with_children(|container| {
             container
-                .spawn(NodeBundle {
-                    style: Style {
+                .spawn((
+                    Node {
                         align_items: AlignItems::Center,
                         padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
                         ..default()
                     },
-                    background_color: (*UI_BACKGROUND_COLOR).into(),
-                    border_radius: BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                    ..default()
-                })
+                    BackgroundColor((*UI_BACKGROUND_COLOR).into()),
+                    BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
+                ))
                 .with_children(|container| {
-                    container.spawn(TextBundle {
-                        text: Text::from_section(
-                            dialogue_queue.0.remove(0),
-                            TextStyle {
-                                font_size: 30.,
-                                ..default()
-                            },
-                        ),
-                        ..default()
-                    });
+                    container.spawn((
+                        Text(dialogue_queue.0.remove(0).into()),
+                        TextFont {
+                            font_size: 30.,
+                            ..default()
+                        },
+                    ));
                 });
         })
         .id();

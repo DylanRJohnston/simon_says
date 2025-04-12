@@ -29,20 +29,17 @@ impl ActionListPlugin {
     pub fn spawn_ui(parent: &mut ChildBuilder) {
         parent.spawn((
             ActionPlanUI,
-            NodeBundle {
-                style: Style {
-                    width: Val::Px(295.),
-                    flex_direction: FlexDirection::Column,
-                    padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
-                    row_gap: Val::Px(UI_CONTAINER_GAP),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                border_radius: BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                background_color: (*UI_BACKGROUND_COLOR).into(),
+            Node {
+                // width: Val::Px(350.),
+                flex_direction: FlexDirection::Column,
+                padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
+                row_gap: Val::Px(UI_CONTAINER_GAP),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
                 ..default()
             },
+            BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
+            BackgroundColor((*UI_BACKGROUND_COLOR).into()),
         ));
     }
 }
@@ -86,58 +83,45 @@ fn update_action_list(
         .entity(ui)
         .despawn_descendants()
         .with_children(|parent| {
-            parent.spawn(TextBundle {
-                style: Style { ..default() },
-                text: Text::from_section(
-                    "Simon Says",
-                    TextStyle {
-                        color: *PRIMARY_TEXT_COLOR,
-                        font_size: 45.,
-                        ..default()
-                    },
-                ),
-                ..default()
-            });
-
-            parent.spawn(TextBundle {
-                style: Style {
+            parent.spawn((
+                Text("Simon Says".into()),
+                Node {
                     align_self: AlignSelf::FlexStart,
                     ..default()
                 },
-                text: Text::from_section(
-                    format!(
-                        "max {max} command{plural}{trailing}",
-                        max = level.action_limit,
-                        plural = if level.action_limit == 1 { "" } else { "s" },
-                        trailing = if **step_count > 0 {
-                            format!("; {} steps", **step_count)
-                        } else {
-                            "".into()
-                        }
-                    ),
-                    TextStyle {
-                        color: *PRIMARY_TEXT_COLOR,
-                        font_size: 20.,
-                        ..default()
-                    },
-                ),
-                ..default()
-            });
+                TextColor(*PRIMARY_TEXT_COLOR),
+                TextFont {
+                    font_size: 45.,
+                    ..default()
+                },
+            ));
+
+            parent.spawn((
+                Node {
+                    align_self: AlignSelf::FlexStart,
+                    ..default()
+                },
+                Text(format!(
+                    "max {max} command{plural}{trailing}",
+                    max = level.action_limit,
+                    plural = if level.action_limit == 1 { "" } else { "s" },
+                    trailing = if **step_count > 0 {
+                        format!("; {} steps", **step_count)
+                    } else {
+                        "".into()
+                    }
+                )),
+                TextColor(*PRIMARY_TEXT_COLOR),
+                TextFont {
+                    font_size: 20.,
+                    ..default()
+                },
+            ));
 
             parent.spawn(horizontal_line());
 
             if action_plan.is_empty() {
-                parent.spawn(TextBundle {
-                    style: Style { ..default() },
-                    text: Text::from_section(
-                        "No Commands",
-                        TextStyle {
-                            color: *GHOST_TEXT_COLOR,
-                            ..default()
-                        },
-                    ),
-                    ..default()
-                });
+                parent.spawn((Text("No Commands".into()), TextColor(*GHOST_TEXT_COLOR)));
             }
 
             for (index, action) in action_plan.iter().enumerate() {
@@ -150,99 +134,83 @@ fn update_action_list(
                 };
 
                 parent
-                    .spawn(NodeBundle {
-                        style: Style {
+                    .spawn((
+                        Node {
                             width: Val::Percent(100.),
                             min_height: Val::Px(40.),
-                            // padding: UiRect::left(Val::Px(16.)),
                             justify_content: JustifyContent::FlexStart,
                             align_items: AlignItems::Center,
                             column_gap: Val::Px(8.0),
                             ..default()
                         },
-                        border_radius: BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
+                        BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
                         background_color,
-                        ..default()
-                    })
+                    ))
                     .with_children(|row| {
-                        row.spawn(NodeBundle {
-                            style: Style {
-                                width: Val::Px(24.),
-                                height: Val::Px(24.),
-                                ..default()
-                            },
+                        row.spawn((Node {
+                            width: Val::Px(24.),
+                            height: Val::Px(24.),
                             ..default()
-                        })
-                        .with_children(|re_arrange_box| {
-                            if prevent_interactions {
-                                return;
-                            }
+                        },))
+                            .with_children(|re_arrange_box| {
+                                if prevent_interactions {
+                                    return;
+                                }
 
-                            let up_disabled = index == 0;
-                            re_arrange_box.spawn((
-                                ButtonBundle {
-                                    style: Style {
+                                let up_disabled = index == 0;
+                                re_arrange_box.spawn((
+                                    Button,
+                                    Node {
                                         width: Val::Px(24.),
                                         height: Val::Px(24.),
                                         top: Val::Px(-8.),
                                         position_type: PositionType::Absolute,
                                         ..default()
                                     },
-                                    image: UiImage::new(icons.up.clone()).with_color(
-                                        if up_disabled {
-                                            *GHOST_ATTENUATION_COLOR
-                                        } else {
-                                            Color::WHITE
-                                        },
-                                    ),
+                                    ImageNode::new(icons.up.clone()).with_color(if up_disabled {
+                                        *GHOST_ATTENUATION_COLOR
+                                    } else {
+                                        Color::WHITE
+                                    }),
+                                    ReorderButton {
+                                        button_type: ButtonType::Up,
+                                        disabled: up_disabled,
+                                        index,
+                                    },
+                                ));
 
-                                    ..default()
-                                },
-                                ReorderButton {
-                                    button_type: ButtonType::Up,
-                                    disabled: up_disabled,
-                                    index,
-                                },
-                            ));
-
-                            let down_disabled = index == (action_plan.len() - 1);
-                            re_arrange_box.spawn((
-                                ButtonBundle {
-                                    style: Style {
+                                let down_disabled = index == (action_plan.len() - 1);
+                                re_arrange_box.spawn((
+                                    Button,
+                                    Node {
                                         width: Val::Px(24.),
                                         height: Val::Px(24.),
                                         bottom: Val::Px(-8.),
                                         position_type: PositionType::Absolute,
                                         ..default()
                                     },
-                                    image: UiImage::new(icons.down.clone()).with_color(
+                                    ImageNode::new(icons.down.clone()).with_color(
                                         if down_disabled {
                                             *GHOST_ATTENUATION_COLOR
                                         } else {
                                             Color::WHITE
                                         },
                                     ),
-                                    ..default()
-                                },
-                                ReorderButton {
-                                    button_type: ButtonType::Down,
-                                    disabled: down_disabled,
-                                    index,
-                                },
-                            ));
-                        });
+                                    ReorderButton {
+                                        button_type: ButtonType::Down,
+                                        disabled: down_disabled,
+                                        index,
+                                    },
+                                ));
+                            });
 
-                        row.spawn(TextBundle {
-                            style: Style {
+                        row.spawn((
+                            Text((*action).into()),
+                            Node {
                                 flex_grow: 1.,
                                 ..default()
                             },
-                            text: Text::from_sections([TextSection::new(
-                                *action,
-                                TextStyle::default(),
-                            )]),
-                            ..default()
-                        });
+                        ));
 
                         if prevent_interactions {
                             return;
@@ -261,7 +229,7 @@ fn update_action_list(
 }
 
 fn reorder_button(
-    mut buttons: Query<(&ReorderButton, &Interaction, &mut UiImage), Changed<Interaction>>,
+    mut buttons: Query<(&ReorderButton, &Interaction, &mut ImageNode), Changed<Interaction>>,
     mut action_plan: ResMut<ActionPlan>,
 ) {
     for (button, interaction, mut image) in &mut buttons {

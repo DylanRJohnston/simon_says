@@ -1,6 +1,10 @@
 use std::f32::consts::PI;
 
-use bevy::{ecs::system::SystemParam, prelude::*};
+use bevy::{
+    color::palettes::css::{GREEN, LIMEGREEN, ORANGE, PINK, PURPLE, RED, SKY_BLUE},
+    ecs::system::SystemParam,
+    prelude::*,
+};
 
 use crate::{
     assets::TextureAssets, game_state::GameState, player::Player, ui::dialogue::DialogueStarted,
@@ -21,8 +25,8 @@ impl Plugin for EyesPlugin {
                     !matches!(state.get(), GameState::Loading)
                 }),
             )
-            .observe(emotion_from_player_activity)
-            .observe(trigger_talking_animation);
+            .add_observer(emotion_from_player_activity)
+            .add_observer(trigger_talking_animation);
     }
 }
 
@@ -116,9 +120,7 @@ pub struct Eye {
     pub target: Vec3,
 }
 
-const IRIS_CENTER: Vec3 = Vec3::new(-0.31, -0.28, 0.1);
-
-#[derive(Debug, Component, Default)]
+#[derive(Debug, Component)]
 pub struct Iris;
 
 #[derive(Debug, Resource)]
@@ -153,7 +155,7 @@ fn spawn_eye(
     mut meshes: ResMut<Assets<Mesh>>,
     mut material: ResMut<Assets<StandardMaterial>>,
 ) {
-    let quad_handle = meshes.add(Rectangle::new(12., 12.));
+    let quad_handle = meshes.add(Rectangle::new(8., 8.));
 
     let eye_material = material.add(StandardMaterial {
         base_color_texture: Some(textures.eye.clone()),
@@ -174,33 +176,24 @@ fn spawn_eye(
     commands.insert_resource(EyeMaterialHandle(eye_material.clone()));
     commands.insert_resource(IrisMaterialHandle(iris_material.clone()));
 
-    let camera = camera.get_single().unwrap();
-
-    for (x, y, z) in [(3.0, 2.0, -6.0), (9.0, -1.0, -3.0), (-3.0, 0.0, -6.0)] {
-        let transform =
-            Vec3::new(x, y, z) + (Vec3::new(x, y, z) - camera.translation).normalize() * 5.0;
+    for (x, y, z) in [(3.0, 2.0, -6.0), (9.0, -1.0, -3.0), (-3.0, 1.0, -6.0)] {
+        // let transform =
+        //     Vec3::new(x, y, z) + (Vec3::new(x, y, z) - camera.translation).normalize() * 5.0;
 
         commands
             .spawn((
                 Name::from("Eye"),
                 Eye::default(),
                 Emotion::default(),
-                PbrBundle {
-                    mesh: quad_handle.clone(),
-                    material: eye_material.clone(),
-                    transform: Transform::from_translation(transform),
-                    ..default()
-                },
+                Mesh3d(quad_handle.clone()),
+                MeshMaterial3d(eye_material.clone()),
+                Transform::from_xyz(x, y, z),
             ))
-            .with_children(|eye| {
-                eye.spawn((
+            .with_children(|iris| {
+                iris.spawn((
                     Iris,
-                    PbrBundle {
-                        mesh: quad_handle.clone(),
-                        material: iris_material.clone(),
-                        transform: Transform::from_translation(IRIS_CENTER),
-                        ..default()
-                    },
+                    Mesh3d(quad_handle.clone()),
+                    MeshMaterial3d(iris_material.clone()),
                 ));
             });
     }
@@ -208,7 +201,6 @@ fn spawn_eye(
 
 fn eye_track_player(
     players: Query<&Transform, (Changed<Transform>, With<Player>)>,
-    mut eye: Query<&mut Eye>,
     mut commands: Commands,
 ) {
     if players.iter().next().is_some() {
@@ -220,27 +212,67 @@ fn animate_eye_direction(
     mut eye: Query<(&mut Transform, &Eye, &Emotion, &Children), Without<Iris>>,
     mut iris: Query<&mut Transform, With<Iris>>,
     time: Res<Time>,
+    #[cfg(feature = "debug")] mut gizmos: Gizmos,
 ) {
+    let base_rotation = Quat::from_euler(EulerRot::XYZ, 0., PI, 0.);
+
     for (mut transform, eye, emotion, children) in &mut eye {
+        let eye_origin = transform.translation - transform.rotation * Vec3::Z;
+
+        #[cfg(feature = "debug")]
+        {
+            // Focal point of the eye
+            gizmos.cross(eye_origin, 0.1, SKY_BLUE);
+
+            // Line to visual target
+            #[cfg(feature = "debug")]
+            gizmos.line(eye_origin, eye.target, RED);
+            gizmos.cross(Isometry3d::from_translation(eye.target), 0.1, RED);
+
+            gizmos.line(
+                eye_origin,
+                transform.translation
+                    + transform.rotation * Vec3::Z * (eye.target - transform.translation).length(),
+                GREEN,
+            );
+        }
+
         let mut iris = iris.get_mut(children[0]).unwrap();
 
-        let base_rotation = Quat::from_euler(EulerRot::XYZ, 0., PI, 0.);
+        // The iris lerps to look at the target much faster, but instead of rotating
+        // it moves up and down / side to side based on the intersection of the ray cast one unit beind the eye and the plane of the eye in that direction
 
-        let target = transform.looking_at(eye.target, Vec3::Y).rotation * base_rotation;
-        let difference = (transform.rotation.conjugate() * target).xyz();
+        let iris_rotation = Transform::from_translation(eye_origin)
+            .looking_at(iris.translation + transform.translation, transform.up())
+            .rotation;
 
-        iris.translation = iris.translation.lerp(
-            IRIS_CENTER + 2. * Vec3::new(-difference.y, difference.x, 0.),
-            4.0 * time.delta_seconds(),
-        );
+        let target_rotation = Transform::from_translation(eye_origin)
+            .looking_at(eye.target, transform.up())
+            .rotation;
 
-        iris.translation.x *= transform.scale.x;
-        iris.translation.y *= transform.scale.y;
+        let new_rotation = iris_rotation
+            .lerp(target_rotation, f32::max(4.0 * time.delta_secs(), 0.01))
+            .normalize();
 
-        if !matches!(emotion, Emotion::Neutral(_)) {
+        iris.translation = eye_origin - new_rotation * Vec3::Z - transform.translation;
+        // iris.translation.z = 0.;
+
+        #[cfg(feature = "debug")]
+        {
+            gizmos.cross(iris.translation + transform.translation, 0.1, ORANGE);
+            gizmos.line(
+                eye_origin,
+                eye_origin
+                    + (iris.translation + transform.translation - eye_origin).normalize()
+                        * (eye.target - eye_origin).length(),
+                ORANGE,
+            );
+        }
+
+        if !matches!(emotion, Emotion::Neutral { .. }) {
             let rotation = transform.rotation.lerp(
                 transform.looking_at(eye.target, Vec3::Y).rotation * base_rotation,
-                0.5 * time.delta_seconds(),
+                0.5 * time.delta_secs(),
             );
 
             transform.rotation = rotation;
@@ -360,13 +392,13 @@ fn animate_emotion(
 
         eye.scale.y = eye.scale.y.lerp(
             emotion.target_scale(),
-            time.delta_seconds() * emotion.emotion_speed(),
+            time.delta_secs() * emotion.emotion_speed(),
         );
 
         iris.scale.y = 1. / eye.scale.y;
         iris.scale = iris.scale.lerp(
             Vec3::ONE * emotion.dilation(),
-            time.delta_seconds() * emotion.emotion_speed(),
+            time.delta_secs() * emotion.emotion_speed(),
         );
     }
 }
@@ -388,7 +420,7 @@ fn trigger_talking_animation(
         match emotion.as_mut() {
             Emotion::Focused { timer, target } => {
                 timer.reset();
-                *target = FocusTarget::Camera
+                *target = FocusTarget::Player;
             }
             Emotion::Bored(_) | Emotion::Neutral(_) => *emotion = Emotion::focused(),
             _ => {}

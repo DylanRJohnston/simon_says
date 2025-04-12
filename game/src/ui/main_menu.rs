@@ -9,10 +9,10 @@ pub struct MainMenuPlugin;
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnExit(GameState::Loading), setup)
-            .observe(start_game)
-            .observe(remove_ui)
-            .observe(spawn_main_menu)
-            .observe(refuse)
+            .add_observer(start_game)
+            .add_observer(remove_ui)
+            .add_observer(spawn_main_menu)
+            .add_observer(refuse)
             .add_systems(OnExit(GameState::MainMenu), destroy);
     }
 }
@@ -34,16 +34,14 @@ fn spawn_main_menu(_trigger: Trigger<SpawnMainMenu>, mut commands: Commands) {
     commands.spawn(DelayedCommand::new(0.5, |commands| {
         commands
             .spawn((
+                Name::new("Main Menu Root"),
                 MainMenuRoot,
-                NodeBundle {
-                    style: Style {
-                        height: Val::Percent(100.0),
-                        width: Val::Percent(100.0),
-                        justify_content: JustifyContent::Center,
-                        column_gap: Val::Px(UI_CONTAINER_GAP),
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
+                Node {
+                    height: Val::Percent(100.0),
+                    width: Val::Percent(100.0),
+                    justify_content: JustifyContent::Center,
+                    column_gap: Val::Px(UI_CONTAINER_GAP),
+                    align_items: AlignItems::Center,
                     ..default()
                 },
             ))
@@ -52,9 +50,9 @@ fn spawn_main_menu(_trigger: Trigger<SpawnMainMenu>, mut commands: Commands) {
                     .text("Begin Cycle No. 4,815,162,342".into())
                     .on_click(|commands| commands.trigger(StartGame))
                     .build(container);
+
                 button::Button::builder()
                     .text("Disobey".into())
-                    // .text("Vibe".into())
                     .background_color(*BUTTON_CANCEL_COLOR)
                     .on_click(|commands| {
                         commands.trigger(RemoveUI);

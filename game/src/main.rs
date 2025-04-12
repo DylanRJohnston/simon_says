@@ -1,6 +1,7 @@
 use bevy::asset::AssetMetaCheck;
 use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::prelude::*;
+use bevy::render::camera::ScalingMode;
 use bevy_firework::plugin::ParticleSystemPlugin;
 use bevy_tweening::TweeningPlugin;
 use game::assets::AssetsPlugin;
@@ -45,7 +46,7 @@ fn main() {
     .add_plugins(DelayedCommandPlugin)
     .add_plugins(GameStatePlugin)
     .add_plugins(EyesPlugin)
-    .add_plugins(ParticleSystemPlugin)
+    .add_plugins(ParticleSystemPlugin::default())
     .add_plugins(MusicPlugin)
     .add_plugins(VideoGlitchPlugin)
     .add_plugins(AssetsPlugin)
@@ -64,47 +65,31 @@ fn main() {
 }
 
 /// set up a simple 3D scene
+/// set up a simple 3D scene
 fn setup(mut commands: Commands) {
     // light
     commands.spawn((
-        Name::from("Light"),
-        DirectionalLightBundle {
-            directional_light: DirectionalLight {
-                illuminance: 8_000.,
-                shadows_enabled: true,
-                ..default()
-            },
-            transform: Transform {
-                translation: Vec3::default(),
-                rotation: Quat::from_euler(EulerRot::XYZ, -1.1, -0.8, 0.0),
-                scale: Vec3::ONE,
-            },
+        DirectionalLight {
+            illuminance: 8_000.,
+            shadows_enabled: true,
             ..default()
+        },
+        Transform {
+            translation: Vec3::default(),
+            rotation: Quat::from_euler(EulerRot::XYZ, -1.1, 0.5, 0.0),
+            scale: Vec3::ONE,
         },
     ));
 
-    let mut transform = Transform::from_xyz(-5., 6., 5.).looking_at(Vec3::ZERO, Vec3::Y);
-    // transform.translation += Vec3::Y * 1.0;
+    let mut transform = Transform::from_xyz(-3., 5.5, 9.0).looking_at(Vec3::ZERO, Vec3::Y);
+    transform.translation += Vec3::Y * 1.0;
 
     // camera
     commands.spawn((
-        Name::from("Camera"),
-        Camera3dBundle {
-            transform,
-            camera: Camera {
-                hdr: false,
-                ..default()
-            },
-            projection: Projection::Orthographic(OrthographicProjection {
-                scaling_mode: bevy::render::camera::ScalingMode::FixedVertical(8.0),
-                viewport_origin: Vec2::new(0.5, 0.4),
-                ..default() // near: todo!(),
-                            // far: todo!(),
-                            // viewport_origin: todo!(),
-                            // scaling_mode: todo!(),
-                            // scale: todo!(),
-                            // area: todo!(),
-            }),
+        Camera3d::default(),
+        transform,
+        Camera {
+            hdr: false,
             ..default()
         },
         IsDefaultUiCamera,

@@ -16,9 +16,9 @@ impl Plugin for SimulationPlugin {
                 Update,
                 run_simulation.run_if(in_state(SimulationState::Running)),
             )
-            .observe(simulation_start)
-            .observe(simulation_stop)
-            .observe(simulation_pause);
+            .add_observer(simulation_start)
+            .add_observer(simulation_stop)
+            .add_observer(simulation_pause);
     }
 }
 

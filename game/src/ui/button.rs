@@ -96,47 +96,38 @@ impl ButtonBuilder {
                 text_color: self.text_color,
                 disabled: self.disabled,
             },
-            ButtonBundle {
-                style: Style {
-                    padding: UiRect::all(Val::Px(8.0)),
-                    border: UiRect::all(Val::Px(BUTTON_BORDER_THICKNESS)),
-                    ..default()
-                },
-                border_radius: BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
-                background_color: self.background_color.unwrap_or(*BUTTON_COLOR).into(),
-                border_color: self
-                    .border_color
-                    .unwrap_or(self.background_color.unwrap_or(*BUTTON_COLOR))
-                    .into(),
+            Node {
+                padding: UiRect::all(Val::Px(8.0)),
+                border: UiRect::all(Val::Px(BUTTON_BORDER_THICKNESS)),
                 ..default()
             },
+            BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
+            BackgroundColor(self.background_color.unwrap_or(*BUTTON_COLOR).into()),
+            BorderColor(
+                self.border_color
+                    .unwrap_or(self.background_color.unwrap_or(*BUTTON_COLOR))
+                    .into(),
+            ),
+            Interaction::default(),
         ));
+
         commands.with_children(|command_container| {
             if let Some(text) = self.text {
-                command_container.spawn(TextBundle {
-                    text: Text::from_section(
-                        text,
-                        TextStyle {
-                            color: self.text_color.unwrap_or(*PRIMARY_TEXT_COLOR),
-                            ..default()
-                        },
-                    ),
-                    ..default()
-                });
+                command_container.spawn((
+                    Text(text.into()),
+                    TextColor(self.text_color.unwrap_or(*PRIMARY_TEXT_COLOR)),
+                ));
             }
             if let Some(icon) = self.icon {
                 let size = self.size.unwrap_or(20.);
 
                 command_container.spawn((
-                    NodeBundle {
-                        style: Style {
-                            width: Val::Px(size),
-                            height: Val::Px(size),
-                            ..default()
-                        },
+                    Node {
+                        width: Val::Px(size),
+                        height: Val::Px(size),
                         ..default()
                     },
-                    UiImage::new(icon),
+                    ImageNode::new(icon),
                 ));
             }
         });
@@ -223,17 +214,15 @@ fn button_interaction(
 
 fn update_style(
     mut query: Query<(&mut BorderColor, &mut BackgroundColor, &Button, &Children), Changed<Button>>,
-    mut text: Query<&mut Text>,
+    mut text_colour: Query<&mut TextColor>,
 ) {
     for (mut border_color, mut background_color, button, children) in &mut query {
-        if let Ok(mut text) = text.get_mut(children[0]) {
-            for section in &mut text.sections {
-                section.style.color = if !button.disabled {
-                    button.text_color.unwrap_or(*PRIMARY_TEXT_COLOR)
-                } else {
-                    *GHOST_TEXT_COLOR
-                };
-            }
+        if let Ok(mut color) = text_colour.get_mut(children[0]) {
+            **color = if !button.disabled {
+                button.text_color.unwrap_or(*PRIMARY_TEXT_COLOR)
+            } else {
+                *GHOST_TEXT_COLOR
+            };
         }
 
         if button.disabled {

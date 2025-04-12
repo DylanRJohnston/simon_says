@@ -24,16 +24,13 @@ impl ActionMenuPlugin {
         container.spawn((
             Name::new("Command Menu UI"),
             ActionMenuUI,
-            NodeBundle {
-                style: Style {
-                    flex_direction: FlexDirection::Column,
-                    padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
-                    ..default()
-                },
-                border_radius: BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                background_color: (*UI_BACKGROUND_COLOR).into(),
+            Node {
+                flex_direction: FlexDirection::Column,
+                padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
                 ..default()
             },
+            BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
+            BackgroundColor((*UI_BACKGROUND_COLOR).into()),
         ));
     }
 }
@@ -55,28 +52,21 @@ fn update_available_actions(
         .entity(ui)
         .despawn_descendants()
         .with_children(|header| {
-            header.spawn(TextBundle {
-                text: Text::from_section(
-                    "Available Commands",
-                    TextStyle {
-                        font_size: 45.,
-                        color: *PRIMARY_TEXT_COLOR,
-                        ..default()
-                    },
-                ),
-                style: Style { ..default() },
-                ..default()
-            });
+            header.spawn((
+                Text("Available Commands".into()),
+                TextColor(*PRIMARY_TEXT_COLOR),
+                TextFont {
+                    font_size: 45.,
+                    ..default()
+                },
+            ));
             header.spawn(horizontal_line());
             header
-                .spawn(NodeBundle {
-                    style: Style {
-                        column_gap: Val::Px(8.),
-                        flex_direction: FlexDirection::Row,
-                        ..default()
-                    },
+                .spawn((Node {
+                    column_gap: Val::Px(8.),
+                    flex_direction: FlexDirection::Row,
                     ..default()
-                })
+                },))
                 .with_children(|action_row| {
                     for action in &level.actions {
                         let action = *action;

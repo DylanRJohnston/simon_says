@@ -66,7 +66,7 @@ fn update_control_state(
         match **simulation_state {
             SimulationState::Running => {
                 button.disabled = false;
-                text.sections[0].value = "Reset".into();
+                **text = "Reset".into();
                 button.on_click = Box::new(|commands| {
                     commands.trigger(SimulationStop);
                     commands.trigger(SpawnPlayer);
@@ -77,7 +77,7 @@ fn update_control_state(
             }
             SimulationState::Stopped => {
                 button.disabled = action_plan.len() == 0;
-                text.sections[0].value = "Clear".into();
+                **text = "Clear".into();
                 button.on_click = Box::new(|commands| {
                     commands.trigger(ResetActionPlan);
                 });

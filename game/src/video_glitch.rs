@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy_tweening::{component_animator_system, Animator, EaseFunction, Lens, Tween};
+use bevy_tweening::{component_animator_system, Animator, Lens, Tween};
 use bevy_video_glitch::VideoGlitchSettings;
 
 use crate::{delayed_command::DelayedCommandExt, game_state::GameState, player::Death};
@@ -14,7 +14,7 @@ impl Plugin for VideoGlitchPlugin {
         app.add_systems(Update, component_animator_system::<VideoGlitchSettings>)
             .add_plugins(bevy_video_glitch::VideoGlitchPlugin)
             .add_systems(Update, video_glitch)
-            .observe(player_death);
+            .add_observer(player_death);
     }
 }
 

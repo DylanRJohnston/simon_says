@@ -7,10 +7,10 @@ pub struct ActionPlugin;
 impl Plugin for ActionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(ActionPlan::default())
-            .observe(add_action)
-            .observe(remove_action)
-            .observe(reset_action_plan)
-            .observe(reset_action_plan_on_level_load);
+            .add_observer(add_action)
+            .add_observer(remove_action)
+            .add_observer(reset_action_plan)
+            .add_observer(reset_action_plan_on_level_load);
     }
 }
 

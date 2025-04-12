@@ -5,15 +5,15 @@ use bevy::{
     utils::HashMap,
 };
 use bevy_firework::{
-    bevy_utilitarian::prelude::{Gradient, ParamCurve, RandF32, RandValue, RandVec3},
-    core::{BlendMode, ParticleSpawnerBundle, ParticleSpawnerSettings},
+    bevy_utilitarian::prelude::{RandF32, RandValue, RandVec3},
+    core::{BlendMode, ParticleSpawner},
+    curve::{FireworkCurve, FireworkGradient},
     emission_shape::EmissionShape,
 };
 use bevy_tweening::{
-    asset_animator_system, lens::TransformPositionLens, Animator, AssetAnimator, EaseFunction,
-    EaseMethod, Lens, RepeatCount, Tween,
+    asset_animator_system, lens::TransformPositionLens, Animator, AssetAnimator, EaseMethod, Lens,
+    RepeatCount, Tween,
 };
-use rand::Rng;
 use std::{f32::consts::PI, sync::LazyLock, time::Duration};
 
 use crate::{
@@ -32,11 +32,14 @@ impl Plugin for LevelPlugin {
         app.add_systems(Startup, setup)
             .add_systems(OnExit(GameState::Loading), create_textures)
             .add_systems(Update, spawn_level.run_if(in_state(GameState::InGame)))
-            .add_systems(Update, asset_animator_system::<StandardMaterial>)
-            .observe(level_completed)
-            .observe(load_next_level)
-            .observe(despawn_level)
-            .observe(load_level);
+            .add_systems(
+                Update,
+                asset_animator_system::<StandardMaterial, MeshMaterial3d<StandardMaterial>>,
+            )
+            .add_observer(level_completed)
+            .add_observer(load_next_level)
+            .add_observer(despawn_level)
+            .add_observer(load_level);
     }
 }
 
@@ -1021,7 +1024,7 @@ fn setup(mut commands: Commands) {
         ),
     }
 
-    let mut settings = ParticleSpawnerSettings {
+    let mut settings = ParticleSpawner {
         one_shot: false,
         rate: 80.0,
         emission_shape: EmissionShape::HollowSphere {
@@ -1042,8 +1045,8 @@ fn setup(mut commands: Commands) {
             min: 0.05,
             max: 0.05,
         },
-        scale_curve: ParamCurve::linear(vec![(0., 0.5), (0.5, 1.0), (1.0, 0.5)]),
-        color: Gradient::linear(vec![
+        scale_curve: FireworkCurve::uneven_samples(vec![(0., 0.5), (0.5, 1.0), (1.0, 0.5)]),
+        color: FireworkGradient::uneven_samples(vec![
             (0.0, LinearRgba::new(0., 0., 0., 0.0)),
             (0.1, LinearRgba::new(0., 0., 0., 0.85)),
             (0.9, LinearRgba::new(0., 0., 0., 0.85)),
@@ -1057,12 +1060,12 @@ fn setup(mut commands: Commands) {
         ..default()
     };
 
-    commands.spawn(ParticleSpawnerBundle::from_settings(settings.clone()));
+    commands.spawn(settings.clone());
 
     settings.one_shot = true;
     settings.rate = 800.0;
     settings.lifetime = RandF32 { min: 0., max: 10. };
-    commands.spawn(ParticleSpawnerBundle::from_settings(settings));
+    commands.spawn(settings);
 }
 
 #[derive(Component)]
@@ -1088,7 +1091,7 @@ fn spawn_level(
     // This ensures there's only one animator
     let mut cw_rot_animator = Some(AssetAnimator::new(
         Tween::new(
-            EaseMethod::Linear,
+            EaseMethod::EaseFunction(EaseFunction::Linear),
             Duration::from_secs_f32(3.0),
             RotationLens::default(),
         )
@@ -1098,7 +1101,7 @@ fn spawn_level(
 
     let mut ccw_rot_animator = Some(AssetAnimator::new(
         Tween::new(
-            EaseMethod::Linear,
+            EaseMethod::EaseFunction(EaseFunction::Linear),
             Duration::from_secs_f32(3.0),
             RotationLens { ccw: true },
         )
@@ -1107,7 +1110,7 @@ fn spawn_level(
     ));
 
     commands
-        .spawn((LevelRoot, SpatialBundle::INHERITED_IDENTITY))
+        .spawn((LevelRoot, Visibility::Inherited, Transform::IDENTITY))
         .with_children(|root| {
             for ((x, y), tile) in &level.tiles {
                 let position = match tile {
@@ -1118,31 +1121,28 @@ fn spawn_level(
                 let mut entity = root.spawn((
                     Name::from(format!("{tile:?}")),
                     *tile,
-                    PbrBundle {
-                        mesh: tile_mesh.clone(),
-                        material: match tile {
-                            Tile::Basic | Tile::Start(_) => tile_material.basic.clone(),
-                            Tile::Wall => tile_material.wall.clone(),
-                            Tile::Finish => tile_material.finish.clone(),
-                            Tile::Ice => tile_material.ice.clone(),
-                            Tile::CWRot => tile_material.cw_rot.clone(),
-                            Tile::CCWRot => tile_material.ccw_rot.clone(),
+                    Mesh3d(tile_mesh.clone()),
+                    MeshMaterial3d(match tile {
+                        Tile::Basic | Tile::Start(_) => tile_material.basic.clone(),
+                        Tile::Wall => tile_material.wall.clone(),
+                        Tile::Finish => tile_material.finish.clone(),
+                        Tile::Ice => tile_material.ice.clone(),
+                        Tile::CWRot => tile_material.cw_rot.clone(),
+                        Tile::CCWRot => tile_material.ccw_rot.clone(),
+                    }),
+                    Transform {
+                        translation: position - Vec3::Y * 20.0,
+                        rotation: match tile {
+                            // Tile::Ice => Quat::from_rotation_y(
+                            //     rand::thread_rng().gen_range(0..4) as f32
+                            //         * std::f32::consts::FRAC_PI_2,
+                            // ),
+                            _ => Quat::from_rotation_y(std::f32::consts::PI),
                         },
-                        transform: Transform {
-                            translation: position - Vec3::Y * 20.0,
-                            rotation: match tile {
-                                // Tile::Ice => Quat::from_rotation_y(
-                                //     rand::thread_rng().gen_range(0..4) as f32
-                                //         * std::f32::consts::FRAC_PI_2,
-                                // ),
-                                _ => Quat::from_rotation_y(std::f32::consts::PI),
-                            },
-                            scale: match tile {
-                                Tile::Wall => Vec3::ONE + Vec3::Y * 0.4,
-                                _ => Vec3::ONE,
-                            },
+                        scale: match tile {
+                            Tile::Wall => Vec3::ONE + Vec3::Y * 0.4,
+                            _ => Vec3::ONE,
                         },
-                        ..default()
                     },
                     Animator::new(Tween::new(
                         EaseFunction::QuadraticOut,

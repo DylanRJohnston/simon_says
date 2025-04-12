@@ -21,9 +21,9 @@ impl Plugin for SettingsPlugin {
             .add_systems(Update, update_settings_ui_state)
             .add_systems(Update, dismiss_settings_ui)
             .add_systems(Update, level_card_interactions)
-            .observe(create_settings_ui)
-            .observe(destroy_settings_ui)
-            .observe(toggle_volume);
+            .add_observer(create_settings_ui)
+            .add_observer(destroy_settings_ui)
+            .add_observer(toggle_volume);
     }
 }
 
@@ -33,10 +33,11 @@ pub enum GameMode {
     Challenge,
 }
 
-fn spawn_ui(mut container: Commands, icons: Res<IconAssets>) {
-    container
-        .spawn(NodeBundle {
-            style: Style {
+fn spawn_ui(mut commands: Commands, icons: Res<IconAssets>) {
+    commands
+        .spawn((
+            Name::new("Settings UI Container"),
+            Node {
                 width: Val::Percent(100.),
                 height: Val::Percent(100.),
                 flex_direction: FlexDirection::Row,
@@ -45,8 +46,7 @@ fn spawn_ui(mut container: Commands, icons: Res<IconAssets>) {
                 padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
                 ..default()
             },
-            ..default()
-        })
+        ))
         .with_children(|container| {
             button::Button::builder()
                 .on_click(|commands| commands.trigger(CreateSettingsUI))
@@ -90,26 +90,25 @@ fn create_settings_ui(
 
     commands
         .spawn((
-            NodeBundle {
-                style: Style {
-                    width: Val::Percent(100.),
-                    height: Val::Percent(100.),
-                    flex_direction: FlexDirection::Row,
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
-                    ..default()
-                },
-                background_color: BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.6)),
+            Name::new("Settings UI Root"),
+            SettingsUIRoot,
+            Node {
+                width: Val::Percent(100.),
+                height: Val::Percent(100.),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
                 ..default()
             },
-            SettingsUIRoot,
+            BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.6)),
             Interaction::default(),
         ))
         .with_children(|container| {
             container
-                .spawn((NodeBundle {
-                    style: Style {
+                .spawn((
+                    Name::new("Settings Panel"),
+                    Node {
                         flex_direction: FlexDirection::Column,
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Start,
@@ -117,45 +116,43 @@ fn create_settings_ui(
                         row_gap: Val::Px(UI_CONTAINER_GAP),
                         ..default()
                     },
-                    border_radius: BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                    background_color: BackgroundColor(Color::srgba_u8(0x56, 0x6c, 0x86, 0xff)),
-                    focus_policy: FocusPolicy::Block,
-                    ..default()
-                },))
+                    BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
+                    BackgroundColor(Color::srgba_u8(0x56, 0x6c, 0x86, 0xff)),
+                    FocusPolicy::Block,
+                ))
                 .with_children(|container| {
+                    // Header section with game mode and controls
                     container
-                        .spawn(NodeBundle {
-                            style: Style {
+                        .spawn((
+                            Name::new("Header Section"),
+                            Node {
                                 width: Val::Percent(100.),
                                 flex_direction: FlexDirection::Row,
                                 justify_content: JustifyContent::SpaceBetween,
                                 align_items: AlignItems::Center,
                                 ..default()
                             },
-                            ..default()
-                        })
+                        ))
                         .with_children(|container| {
+                            // Game mode controls
                             container
-                                .spawn(NodeBundle {
-                                    style: Style {
+                                .spawn((
+                                    Name::new("Game Mode Controls"),
+                                    Node {
                                         column_gap: Val::Px(UI_CONTAINER_GAP),
                                         ..default()
                                     },
-                                    ..default()
-                                })
+                                ))
                                 .with_children(|container| {
-                                    container.spawn(TextBundle {
-                                        text: Text::from_section(
-                                            "Game Mode:",
-                                            TextStyle {
-                                                font_size: 45.,
-                                                color: *PRIMARY_TEXT_COLOR,
-                                                ..default()
-                                            },
-                                        ),
-                                        style: Style { ..default() },
-                                        ..default()
-                                    });
+                                    container.spawn((
+                                        Name::new("Game Mode Label"),
+                                        Text("Game Mode:".into()),
+                                        TextColor(*PRIMARY_TEXT_COLOR),
+                                        TextFont {
+                                            font_size: 45.,
+                                            ..default()
+                                        },
+                                    ));
 
                                     let mut story = button::Button::builder()
                                         .on_click(|commands| {
@@ -182,14 +179,15 @@ fn create_settings_ui(
                                     challenge.build(container).insert(ChallengeButton);
                                 });
 
+                            // Control buttons
                             container
-                                .spawn(NodeBundle {
-                                    style: Style {
+                                .spawn((
+                                    Name::new("Control Buttons"),
+                                    Node {
                                         column_gap: Val::Px(UI_CONTAINER_GAP),
                                         ..default()
                                     },
-                                    ..default()
-                                })
+                                ))
                                 .with_children(|container| {
                                     button::Button::builder()
                                         .on_click(|commands| commands.trigger(ToggleVolume))
@@ -200,6 +198,7 @@ fn create_settings_ui(
                                         .size(24.)
                                         .build(container)
                                         .insert(VolumeButton);
+
                                     button::Button::builder()
                                         .background_color(*BUTTON_CANCEL_COLOR)
                                         .on_click(|commands| {
@@ -217,34 +216,33 @@ fn create_settings_ui(
                                 });
                         });
 
+                    // Game mode explanation
                     container.spawn((
+                        Name::new("Game Mode Explanation"),
                         GameModeExplanation,
-                        TextBundle {
-                            text: Text::from_section(
-                                if *game_mode == GameMode::Story {
-                                    "Levels progress with any solution"
-                                } else {
-                                    "Levels only progress once all challenges are completed"
-                                },
-                                TextStyle {
-                                    font_size: 16.,
-                                    color: *PRIMARY_TEXT_COLOR,
-                                    ..default()
-                                },
-                            ),
+                        Text(
+                            if *game_mode == GameMode::Story {
+                                "Levels progress with any solution"
+                            } else {
+                                "Levels only progress once all challenges are completed"
+                            }
+                            .into(),
+                        ),
+                        TextColor(*PRIMARY_TEXT_COLOR),
+                        TextFont {
+                            font_size: 16.,
                             ..default()
                         },
                     ));
 
-                    let mut hr = horizontal_line();
+                    // Horizontal line
+                    container.spawn((Name::new("Divider"), horizontal_line()));
 
-                    hr.style.margin =
-                        UiRect::axes(Val::Px(0.), Val::Px(UI_CONTAINER_PADDING / 2.0));
-                    container.spawn(hr);
-
+                    // Level grid
                     container
-                        .spawn(NodeBundle {
-                            style: Style {
+                        .spawn((
+                            Name::new("Level Grid"),
+                            Node {
                                 display: Display::Grid,
                                 grid_template_columns: vec![RepeatedGridTrack::fr(6, 1.)],
                                 grid_auto_rows: vec![GridTrack::fr(1.)],
@@ -252,8 +250,7 @@ fn create_settings_ui(
                                 column_gap: Val::Px(UI_CONTAINER_GAP),
                                 ..default()
                             },
-                            ..default()
-                        })
+                        ))
                         .with_children(|container| {
                             let success_color = Color::srgba_u8(0x0c, 0xc4, 0x0f, 0xdd);
                             let incomplete_color = Color::srgb_u8(0x41, 0x53, 0x69);
@@ -272,75 +269,60 @@ fn create_settings_ui(
 
                                 container
                                     .spawn((
+                                        Name::new(format!("Level Card {}", index)),
                                         LevelCard(index),
                                         Interaction::default(),
-                                        NodeBundle {
-                                            style: Style {
-                                                justify_content: JustifyContent::FlexStart,
-                                                align_items: AlignItems::Center,
-                                                flex_direction: FlexDirection::Column,
-                                                padding: UiRect::all(Val::Px(
-                                                    UI_CONTAINER_PADDING / 2.,
-                                                )),
-                                                row_gap: Val::Px(UI_CONTAINER_GAP * 2.),
-                                                border: UiRect::all(Val::Px(4.)),
-                                                ..default()
-                                            },
-                                            border_color: if index == **level_counter {
-                                                (*PRIMARY_TEXT_COLOR).into()
-                                            } else {
-                                                BorderColor::DEFAULT
-                                            },
-                                            background_color: if challenge.level_completed {
-                                                BackgroundColor(success_color)
-                                            } else {
-                                                BackgroundColor(incomplete_color)
-                                            },
-                                            border_radius: BorderRadius::all(Val::Px(
-                                                BUTTON_BORDER_RADIUS * 2.0,
+                                        Node {
+                                            justify_content: JustifyContent::FlexStart,
+                                            align_items: AlignItems::Center,
+                                            flex_direction: FlexDirection::Column,
+                                            padding: UiRect::all(Val::Px(
+                                                UI_CONTAINER_PADDING / 2.,
                                             )),
+                                            row_gap: Val::Px(UI_CONTAINER_GAP * 2.),
+                                            border: UiRect::all(Val::Px(4.)),
                                             ..default()
                                         },
+                                        BorderColor(if index == **level_counter {
+                                            (*PRIMARY_TEXT_COLOR).into()
+                                        } else {
+                                            BorderColor::DEFAULT.0
+                                        }),
+                                        BackgroundColor(if challenge.level_completed {
+                                            success_color
+                                        } else {
+                                            incomplete_color
+                                        }),
+                                        BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS * 2.0)),
                                     ))
                                     .with_children(|container| {
-                                        container.spawn(TextBundle {
-                                            text: Text::from_section(
-                                                level.name,
-                                                TextStyle::default(),
-                                            ),
-                                            ..default()
-                                        });
+                                        container.spawn(Text(level.name.into()));
 
                                         container
-                                            .spawn(NodeBundle {
-                                                style: Style {
-                                                    column_gap: Val::Px(UI_CONTAINER_GAP),
-                                                    ..default()
-                                                },
+                                            .spawn(Node {
+                                                column_gap: Val::Px(UI_CONTAINER_GAP),
                                                 ..default()
                                             })
                                             .with_children(|container| {
                                                 let mut spawn_challenge_tracker =
                                                     |completed: bool| {
-                                                        container.spawn(NodeBundle {
-                                                            style: Style {
+                                                        container.spawn((
+                                                            Node {
                                                                 width: Val::Px(24.),
                                                                 height: Val::Px(24.),
                                                                 border: UiRect::all(Val::Px(2.)),
                                                                 ..default()
                                                             },
-                                                            border_radius: BorderRadius::all(
-                                                                Val::Px(BUTTON_BORDER_RADIUS),
-                                                            ),
-                                                            border_color: (*PRIMARY_TEXT_COLOR)
-                                                                .into(),
-                                                            background_color: if completed {
+                                                            BorderRadius::all(Val::Px(
+                                                                BUTTON_BORDER_RADIUS,
+                                                            )),
+                                                            BorderColor(*PRIMARY_TEXT_COLOR),
+                                                            BackgroundColor(if completed {
                                                                 (*PRIMARY_TEXT_COLOR).into()
                                                             } else {
                                                                 incomplete_color.into()
-                                                            },
-                                                            ..default()
-                                                        });
+                                                            }),
+                                                        ));
                                                     };
 
                                                 if let Some(completed) = challenge.steps {
@@ -392,7 +374,7 @@ fn update_settings_ui_state(
     }
 
     for mut text in &mut explanation {
-        text.sections[0].value = match *game_mode {
+        **text = match *game_mode {
             GameMode::Story => "Levels progress with any solution".into(),
             GameMode::Challenge => "Levels only progress once all challenges are completed".into(),
         };
@@ -428,11 +410,11 @@ fn level_card_interactions(
     mut commands: Commands,
     mut game_state: ResMut<NextState<GameState>>,
 ) {
-    for (level, interaction, mut cards) in &mut cards {
+    for (level, interaction, mut border_color) in &mut cards {
         let level_id = level.0;
 
         if level_id == **level_counter {
-            *cards = BorderColor(*PRIMARY_TEXT_COLOR);
+            *border_color = BorderColor(*PRIMARY_TEXT_COLOR);
             continue;
         }
 
@@ -450,8 +432,8 @@ fn level_card_interactions(
                 }
                 other => tracing::warn!(?other, "attempted to select non-level scene"),
             },
-            Interaction::Hovered => *cards = BorderColor(*PRIMARY_TEXT_COLOR),
-            Interaction::None => *cards = BorderColor::default(),
+            Interaction::Hovered => *border_color = BorderColor(*PRIMARY_TEXT_COLOR),
+            Interaction::None => *border_color = BorderColor::default(),
         }
     }
 }
@@ -466,7 +448,7 @@ fn toggle_volume(
     _trigger: Trigger<ToggleVolume>,
     icon_assets: Res<IconAssets>,
     mut master_volume: ResMut<MasterVolume>,
-    mut icons: Query<&mut UiImage>,
+    mut icons: Query<&mut ImageNode>,
     volume_button: Query<&Children, With<VolumeButton>>,
 ) {
     *master_volume = match *master_volume {
@@ -476,7 +458,7 @@ fn toggle_volume(
 
     for children in &volume_button {
         let mut icon = icons.get_mut(children[0]).unwrap();
-        icon.texture = match *master_volume {
+        icon.image = match *master_volume {
             MasterVolume::Muted => icon_assets.mute.clone(),
             MasterVolume::Unmuted => icon_assets.unmute.clone(),
         }

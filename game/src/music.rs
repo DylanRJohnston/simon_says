@@ -45,11 +45,11 @@ impl Plugin for MusicPlugin {
             .add_systems(OnEnter(GameState::MainMenu), change_music)
             .add_systems(OnEnter(GameState::InGame), change_music)
             .add_systems(OnEnter(GameState::Paused), change_music)
-            .observe(level_completed)
-            .observe(suppress_music)
-            .observe(set_music_volume)
-            .observe(player_move)
-            .observe(change_level);
+            .add_observer(level_completed)
+            .add_observer(suppress_music)
+            .add_observer(set_music_volume)
+            .add_observer(player_move)
+            .add_observer(change_level);
 
         // We move the menu music into the web page for wasm
         #[cfg(target_arch = "wasm32")]
@@ -106,27 +106,34 @@ fn change_music(
     let audio_instances = RefCell::new(audio_instances);
 
     let pause_music = |handle: &Option<Handle<AudioInstance>>| {
-        handle.as_ref().and_then(|handle| {
-            audio_instances
-                .borrow_mut()
-                .get_mut(handle)?
-                .pause(AudioTween::new(
-                    Duration::from_secs_f32(2.),
-                    AudioEasing::InPowi(2),
-                ))
-        });
+        let Some(handle) = handle.as_ref() else {
+            return;
+        };
+
+        let mut binding = audio_instances.borrow_mut();
+        let Some(instance) = binding.get_mut(handle) else {
+            return;
+        };
+
+        instance.pause(AudioTween::new(
+            Duration::from_secs_f32(2.),
+            AudioEasing::InPowi(2),
+        ));
     };
 
     let play_music = |handle: &Option<Handle<AudioInstance>>| {
-        handle.as_ref().and_then(|handle| {
-            audio_instances
-                .borrow_mut()
-                .get_mut(handle)?
-                .resume(AudioTween::new(
-                    Duration::from_secs_f32(1.),
-                    AudioEasing::OutPowi(2),
-                ))
-        });
+        let Some(handle) = handle.as_ref() else {
+            return;
+        };
+        let mut binding = audio_instances.borrow_mut();
+        let Some(instance) = binding.get_mut(handle) else {
+            return;
+        };
+
+        instance.resume(AudioTween::new(
+            Duration::from_secs_f32(1.),
+            AudioEasing::OutPowi(2),
+        ));
     };
 
     let set_dialogue_volume = |volume: f64| {
@@ -171,13 +178,14 @@ fn loop_game_music(
     }
 
     *timer = Timer::from_seconds(100., TimerMode::Once);
-
-    handles.game.as_ref().and_then(|handle| {
-        audio_instances.get_mut(handle)?.stop(AudioTween::new(
-            Duration::from_secs_f32(10.),
-            AudioEasing::InPowi(2),
-        ))
-    });
+    if let Some(handle) = handles.game.as_ref() {
+        if let Some(instance) = audio_instances.get_mut(handle) {
+            instance.stop(AudioTween::new(
+                Duration::from_secs_f32(10.),
+                AudioEasing::InPowi(2),
+            ));
+        }
+    }
 
     handles.game = Some(
         audio
@@ -205,12 +213,14 @@ fn loop_menu_music(
 
     *timer = Timer::from_seconds(80., TimerMode::Once);
 
-    handles.menu.as_ref().and_then(|handle| {
-        audio_instances.get_mut(handle)?.stop(AudioTween::new(
-            Duration::from_secs_f32(5.),
-            AudioEasing::InPowi(2),
-        ))
-    });
+    if let Some(handle) = handles.menu.as_ref() {
+        if let Some(instance) = audio_instances.get_mut(handle) {
+            instance.stop(AudioTween::new(
+                Duration::from_secs_f32(5.),
+                AudioEasing::InPowi(2),
+            ));
+        }
+    }
 
     handles.menu = Some(
         audio
@@ -237,12 +247,14 @@ fn loop_pause_music(
 
     *timer = Timer::from_seconds(55., TimerMode::Once);
 
-    handles.pause.as_ref().and_then(|handle| {
-        audio_instances.get_mut(handle)?.stop(AudioTween::new(
-            Duration::from_secs_f32(5.),
-            AudioEasing::InPowi(2),
-        ))
-    });
+    if let Some(handle) = handles.pause.as_ref() {
+        if let Some(instance) = audio_instances.get_mut(handle) {
+            instance.stop(AudioTween::new(
+                Duration::from_secs_f32(5.),
+                AudioEasing::InPowi(2),
+            ));
+        }
+    }
 
     handles.pause = Some(
         audio

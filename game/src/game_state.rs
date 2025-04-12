@@ -8,10 +8,10 @@ pub struct GameStatePlugin;
 impl Plugin for GameStatePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(ChallengeState::new())
-            .insert_resource(PkvStore::new("DylanRJohnston", "SimonSays"))
+            .insert_resource(PkvStore::new("DylanRJohnston", "SimonSaysV2"))
             .add_systems(Startup, setup)
             .add_systems(Update, save_state)
-            .observe(reset_challenge_state);
+            .add_observer(reset_challenge_state);
     }
 }
 

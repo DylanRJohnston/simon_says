@@ -42,8 +42,9 @@ impl Plugin for UIPlugin {
 
 fn setup(mut commands: Commands) {
     commands
-        .spawn(NodeBundle {
-            style: Style {
+        .spawn((
+            Name::new("UI Root"),
+            Node {
                 height: Val::Percent(100.0),
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Start,
@@ -51,31 +52,30 @@ fn setup(mut commands: Commands) {
                 padding: UiRect::all(Val::Px(SCREEN_CONTAINER_PADDING)),
                 ..default()
             },
-            ..default()
-        })
+        ))
         .with_children(|commands| {
             commands
-                .spawn(NodeBundle {
-                    style: Style {
+                .spawn((
+                    Name::new("Left Column"),
+                    Node {
                         height: Val::Percent(100.0),
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(UI_CONTAINER_GAP),
                         ..default()
                     },
-                    ..default()
-                })
+                ))
                 .with_children(|container| {
                     ActionMenuPlugin::spawn_ui(container);
 
                     container
-                        .spawn(NodeBundle {
-                            style: Style {
+                        .spawn((
+                            Name::new("Controls Container"),
+                            Node {
                                 column_gap: Val::Px(UI_CONTAINER_GAP),
                                 align_items: AlignItems::Start,
                                 ..default()
                             },
-                            ..default()
-                        })
+                        ))
                         .with_children(|container| {
                             ActionListPlugin::spawn_ui(container);
                             ControlsPlugin::spawn_controls(container);
@@ -86,16 +86,15 @@ fn setup(mut commands: Commands) {
         });
 }
 
-pub fn horizontal_line() -> NodeBundle {
-    NodeBundle {
-        style: Style {
+pub fn horizontal_line() -> impl Bundle {
+    (
+        Node {
             width: Val::Percent(100.),
             border: UiRect::all(Val::Px(1.)),
             margin: UiRect::axes(Val::Px(0.), Val::Px(1. * UI_CONTAINER_GAP)),
             ..default()
         },
-        border_radius: BorderRadius::all(Val::Px(1.)),
-        border_color: (*GHOST_TEXT_COLOR).into(),
-        ..default()
-    }
+        BorderRadius::all(Val::Px(1.)),
+        BorderColor((*GHOST_TEXT_COLOR).into()),
+    )
 }

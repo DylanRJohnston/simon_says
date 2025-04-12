@@ -4,20 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = { version = "0.14", default-features = false }
-bevy-inspector-egui = { version = "0.25.1", optional = true }
-bevy_asset_loader = "0.21.0"
+bevy = { version = "0.15", default-features = false }
+bevy-inspector-egui = { version = "0.30", optional = true }
+bevy_asset_loader = "0.22.0"
 bevy_firework = { version = "0.5.0", default-features = false }
-bevy_kira_audio = "0.20.0"
-bevy_pkv = "0.11.0"
-bevy_tweening = "0.11.0"
+bevy_kira_audio = "0.22.0"
+bevy_pkv = "0.12.0"
+bevy_tweening = "0.12.0"
 bevy_video_glitch = "0.2.0"
 gloo-storage = "0.3.0"
-rand = "0.8.5"
+rand = "0.9"
 serde = { version = "1.0.204", features = ["derive"] }
 tracing = "0.1.40"
-wasm-bindgen = { version = "0.2.92", optional = true }
-wasm-bindgen-macro = { version = "0.2.92", optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-macro = { version = "0.2", optional = true }
 
 [dev-dependencies]
 itertools = "0.13.0"

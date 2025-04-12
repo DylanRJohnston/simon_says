@@ -19,9 +19,9 @@ impl Plugin for ChallengePlugin {
                 Update,
                 update_challenge_ui.run_if(in_state(GameState::InGame)),
             )
-            .observe(update_challenges)
-            .observe(count_steps)
-            .observe(reset_steps);
+            .add_observer(update_challenges)
+            .add_observer(count_steps)
+            .add_observer(reset_steps);
     }
 }
 
@@ -31,14 +31,11 @@ pub struct ChallengeRoot;
 impl ChallengePlugin {
     pub fn spawn_ui(container: &mut ChildBuilder) {
         container.spawn((
-            NodeBundle {
-                style: Style {
-                    flex_direction: FlexDirection::Column,
-                    align_items: AlignItems::Start,
-                    justify_content: JustifyContent::Start,
-                    row_gap: Val::Px(UI_CONTAINER_GAP / 2.),
-                    ..default()
-                },
+            Node {
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Start,
+                justify_content: JustifyContent::Start,
+                row_gap: Val::Px(UI_CONTAINER_GAP / 2.),
                 ..default()
             },
             ChallengeRoot,
@@ -177,8 +174,8 @@ fn update_challenge_ui(
 
             let mut spawn_challenge_tracker = |text: String, completed: bool| {
                 container
-                    .spawn(NodeBundle {
-                        style: Style {
+                    .spawn((
+                        Node {
                             padding: UiRect::axes(
                                 Val::Px(UI_CONTAINER_GAP * 2.),
                                 Val::Px(UI_CONTAINER_GAP),
@@ -186,50 +183,41 @@ fn update_challenge_ui(
                             justify_content: JustifyContent::Start,
                             align_items: AlignItems::Center,
                             column_gap: Val::Px(UI_CONTAINER_GAP),
-                            // border: UiRect::all(Val::Px(4.0)),
                             ..default()
                         },
-                        border_radius: BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                        border_color: if completed {
-                            success_color.into()
+                        BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
+                        BorderColor(if completed {
+                            success_color
                         } else {
-                            BorderColor::default()
-                        },
-                        background_color: (*UI_BACKGROUND_COLOR).into(),
-                        ..default()
-                    })
+                            Color::default()
+                        }),
+                        BackgroundColor((*UI_BACKGROUND_COLOR).into()),
+                    ))
                     .with_children(|container| {
-                        container.spawn(NodeBundle {
-                            style: Style {
+                        container.spawn((
+                            Node {
                                 width: Val::Px(24.),
                                 height: Val::Px(24.),
                                 border: UiRect::all(Val::Px(2.)),
                                 ..default()
                             },
-                            border_radius: BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
-                            border_color: (*PRIMARY_TEXT_COLOR).into(),
-                            background_color: if completed {
+                            BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
+                            BorderColor((*PRIMARY_TEXT_COLOR).into()),
+                            BackgroundColor(if completed {
                                 success_color.into()
                             } else {
-                                BackgroundColor::default()
-                            },
-                            ..default()
-                        });
+                                Color::default().into()
+                            }),
+                        ));
 
-                        container.spawn(TextBundle {
-                            text: Text::from_section(
-                                text,
-                                TextStyle {
-                                    color: if completed {
-                                        *GHOST_TEXT_COLOR
-                                    } else {
-                                        *PRIMARY_TEXT_COLOR
-                                    },
-                                    ..default()
-                                },
-                            ),
-                            ..default()
-                        });
+                        container.spawn((
+                            Text(text.into()),
+                            TextColor(if completed {
+                                *GHOST_TEXT_COLOR
+                            } else {
+                                *PRIMARY_TEXT_COLOR
+                            }),
+                        ));
                     });
             };
 

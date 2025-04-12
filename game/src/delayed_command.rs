@@ -13,6 +13,7 @@ impl Plugin for DelayedCommandPlugin {
 #[derive(Component)]
 pub struct DelayedCommand {
     // You need to own a Box<dyn FnOnce> to be able to call it, Bevy ECS normally only lets us borrow data
+    // and calling FnOnce requires ownership
     // Using Option lets us take ownership of Box<dyn FnOnce> from the ECS with Option::take
     pub command: Option<Box<dyn FnOnce(&mut Commands) + Send + Sync + 'static>>,
     pub delay: Timer,
@@ -32,16 +33,16 @@ fn run_delayed_commands(
     mut delayed_commands: Query<(Entity, &mut DelayedCommand)>,
     time: Res<Time>,
 ) {
-    for (entity, mut command) in &mut delayed_commands {
-        if !command.delay.tick(time.delta()).just_finished() {
+    for (entity, mut delayed_command) in &mut delayed_commands {
+        if !delayed_command.delay.tick(time.delta()).just_finished() {
             continue;
         }
 
-        let Some(command) = command.command.take() else {
+        let Some(delayed_command) = delayed_command.command.take() else {
             continue;
         };
 
-        (command)(&mut commands);
+        (delayed_command)(&mut commands);
         commands.entity(entity).despawn_recursive();
     }
 }
@@ -50,7 +51,7 @@ pub trait DelayedCommandExt {
     fn delayed(
         &mut self,
         secs: f32,
-        command: impl FnMut(&mut Commands) + Send + Sync + 'static,
+        command: impl FnOnce(&mut Commands) + Send + Sync + 'static,
     ) -> EntityCommands<'_>;
 }
 
@@ -58,7 +59,7 @@ impl DelayedCommandExt for Commands<'_, '_> {
     fn delayed(
         &mut self,
         secs: f32,
-        command: impl FnMut(&mut Commands) + Send + Sync + 'static,
+        command: impl FnOnce(&mut Commands) + Send + Sync + 'static,
     ) -> EntityCommands<'_> {
         self.spawn(DelayedCommand::new(secs, command))
     }

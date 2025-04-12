@@ -1,10 +1,10 @@
-use std::{f32::consts::PI, time::Duration};
+use std::time::Duration;
 
 use bevy::{prelude::*, render::view::NoFrustumCulling};
 use bevy_kira_audio::{AudioChannel, AudioControl};
 use bevy_tweening::{
     lens::{TransformPositionLens, TransformRotationLens},
-    Animator, EaseFunction, Sequence, Tracks, Tween, Tweenable,
+    Animator, Sequence, Tracks, Tween, Tweenable,
 };
 
 use crate::{
@@ -21,13 +21,13 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(spawn_player)
-            .observe(attempt_action)
-            .observe(player_death)
-            .observe(level_completed)
-            .observe(animate_player_movement)
-            .observe(despawn_player)
-            .observe(play_player_death_sound)
+        app.add_observer(spawn_player)
+            .add_observer(attempt_action)
+            .add_observer(player_death)
+            .add_observer(level_completed)
+            .add_observer(animate_player_movement)
+            .add_observer(despawn_player)
+            .add_observer(play_player_death_sound)
             .add_systems(Update, uncullable_mesh)
             .add_systems(OnExit(GameState::Loading), pre_instance_player_mesh);
     }
@@ -39,13 +39,10 @@ pub struct Uncullable;
 fn pre_instance_player_mesh(mut commands: Commands, player_mesh: Res<ModelAssets>) {
     commands.spawn((
         Uncullable,
-        SceneBundle {
-            scene: player_mesh.player.clone(),
-            transform: Transform {
-                translation: Vec3::new(-100., -100., -100.),
-                scale: Vec3::ONE,
-                ..default()
-            },
+        SceneRoot(player_mesh.player.clone()),
+        Transform {
+            translation: Vec3::new(-100., -100., -100.),
+            scale: Vec3::ONE,
             ..default()
         },
     ));
@@ -71,7 +68,7 @@ fn has_uncullable_parent(
 
 fn uncullable_mesh(
     mut commands: Commands,
-    mesh: Query<Entity, Added<Handle<Mesh>>>,
+    mesh: Query<Entity, Added<Mesh3d>>,
     parents: Query<&Parent>,
     root_query: Query<Entity, With<Uncullable>>,
 ) {
@@ -144,14 +141,11 @@ pub fn spawn_player(
 
             commands.spawn((
                 player,
-                SceneBundle {
-                    scene: mesh.player.clone(),
-                    transform: Transform {
-                        translation: position + Vec3::Y * 10.0,
-                        rotation: player.rotation.to_quat(),
-                        scale: Vec3::ONE * 0.25,
-                    },
-                    ..default()
+                SceneRoot(mesh.player.clone()),
+                Transform {
+                    translation: position + Vec3::Y * 10.0,
+                    rotation: player.rotation.to_quat(),
+                    scale: Vec3::ONE * 0.25,
                 },
                 Animator::new(Tween::new(
                     EaseFunction::CubicOut,
