@@ -16,10 +16,6 @@ use game::{
 fn main() {
     let mut app = App::new();
 
-    // https://github.com/gfx-rs/wgpu/issues/5263
-    #[cfg(target_arch = "wasm32")]
-    app.insert_resource(Msaa::Off);
-
     app.add_plugins(
         DefaultPlugins
             .set(WindowPlugin {
@@ -98,5 +94,7 @@ fn setup(mut commands: Commands) {
             intensity: 0.,
             ..default()
         },
+        #[cfg(target_arch = "wasm32")]
+        Msaa::Off,
     ));
 }

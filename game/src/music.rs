@@ -2,6 +2,7 @@ use std::{cell::RefCell, time::Duration};
 
 use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 use crate::{
     assets::{MusicAssets, SoundAssets},
@@ -364,11 +365,14 @@ fn player_move(
     _trigger: Trigger<PlayerMove>,
     sounds: Res<SoundAssets>,
     audio: Res<AudioChannel<EffectChannel>>,
+    mut rand: Local<Option<SmallRng>>,
 ) {
+    let rand = rand.get_or_insert_with(|| SmallRng::seed_from_u64(0));
+
     let handle = sounds.player_move.clone();
     audio
         .play(handle)
         .with_volume(0.4)
         .start_from(0.2)
-        .with_playback_rate(1.0 + 0.02 * rand::random::<f64>());
+        .with_playback_rate(1.0 + 0.02 * rand.random::<f64>());
 }

@@ -14,6 +14,7 @@ use bevy_tweening::{
     asset_animator_system, lens::TransformPositionLens, Animator, AssetAnimator, EaseMethod, Lens,
     RepeatCount, Tween,
 };
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use std::{f32::consts::PI, sync::LazyLock, time::Duration};
 
 use crate::{
@@ -1077,7 +1078,10 @@ fn spawn_level(
     tile_mesh: Res<TileMesh>,
     tile_material: Res<TileMaterials>,
     current_scene: CurrentScene,
+    mut rand: Local<Option<SmallRng>>,
 ) {
+    let rand = rand.get_or_insert_with(|| SmallRng::seed_from_u64(0));
+
     if !level.is_changed() {
         return;
     }
@@ -1146,7 +1150,7 @@ fn spawn_level(
                     },
                     Animator::new(Tween::new(
                         EaseFunction::QuadraticOut,
-                        Duration::from_secs_f32(1. + rand::random::<f32>()),
+                        Duration::from_secs_f32(1. + rand.random::<f32>()),
                         TransformPositionLens {
                             start: position - Vec3::Y * 10.0,
                             end: position,
@@ -1194,14 +1198,17 @@ fn despawn_level(
     mut commands: Commands,
     level_root: Query<(Entity, &Children), With<LevelRoot>>,
     tiles: Query<&Transform, With<Tile>>,
+    mut rand: Local<Option<SmallRng>>,
 ) {
+    let rand = rand.get_or_insert_with(|| SmallRng::seed_from_u64(0));
+
     for (level_root, children) in &level_root {
         for tile in children {
             let transform = tiles.get(*tile).unwrap();
 
             commands.entity(*tile).insert(Animator::new(Tween::new(
                 EaseFunction::CubicIn,
-                Duration::from_secs_f32(1. + rand::random::<f32>()),
+                Duration::from_secs_f32(1. + rand.random::<f32>()),
                 TransformPositionLens {
                     start: transform.translation,
                     end: transform.translation - Vec3::Y * 10.0,

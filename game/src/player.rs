@@ -6,6 +6,7 @@ use bevy_tweening::{
     lens::{TransformPositionLens, TransformRotationLens},
     Animator, Sequence, Tracks, Tween, Tweenable,
 };
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 use crate::{
     actions::{Action, CWRotation},
@@ -283,11 +284,14 @@ fn play_player_death_sound(
     _trigger: Trigger<PlayPlayerDeathSound>,
     sounds: Res<SoundAssets>,
     effect_channel: Res<AudioChannel<EffectChannel>>,
+    mut rand: Local<Option<SmallRng>>,
 ) {
+    let rand = rand.get_or_insert_with(|| SmallRng::seed_from_u64(0));
+
     effect_channel
         .play(sounds.death_glitch.clone())
         .with_volume(0.2)
-        .with_playback_rate(0.8 + rand::random::<f64>() * 0.4);
+        .with_playback_rate(0.8 + rand.random::<f64>() * 0.4);
 }
 
 fn player_death(trigger: Trigger<Death>, mut commands: Commands, query: Query<&Player>) {
