@@ -122,10 +122,10 @@ pub struct Eye {
 #[derive(Debug, Component)]
 pub struct Iris;
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Resource, Deref)]
 struct IrisMaterialHandle(Handle<StandardMaterial>);
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Resource, Deref)]
 struct EyeMaterialHandle(Handle<StandardMaterial>);
 
 #[derive(SystemParam)]
@@ -135,21 +135,25 @@ struct EyeMaterial<'w> {
     materials: ResMut<'w, Assets<StandardMaterial>>,
 }
 
-impl<'w> EyeMaterial<'w> {
-    // This is safe because the handles are disjoin and the borrow is transmuted
-    // to the 'w lifetime ensuring it doesn't escape the system
-    fn eye_material(&mut self) -> &'w mut StandardMaterial {
-        unsafe { std::mem::transmute(self.materials.get_mut(&self.eye_handle.0).unwrap()) }
-    }
+impl EyeMaterial<'_> {
+    fn get_materials(&mut self) -> (&mut StandardMaterial, &mut StandardMaterial) {
+        debug_assert_ne!(
+            self.eye_handle.0, self.iris_handle.0,
+            "Eye and iris material handles must be different"
+        );
 
-    fn iris_material(&mut self) -> &'w mut StandardMaterial {
-        unsafe { std::mem::transmute(self.materials.get_mut(&self.iris_handle.0).unwrap()) }
+        // Get both materials at once
+        let eye = self.materials.get_mut(&self.eye_handle.0).unwrap() as *mut _;
+        let iris = self.materials.get_mut(&self.iris_handle.0).unwrap() as *mut _;
+
+        // This is safe because the handles are disjoint
+        // Return both at once - ensures they're only obtained once
+        unsafe { (&mut *eye, &mut *iris) }
     }
 }
 
 fn spawn_eye(
     textures: Res<TextureAssets>,
-    camera: Query<&Transform, With<Camera>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut material: ResMut<Assets<StandardMaterial>>,
@@ -451,8 +455,7 @@ fn animate_talking(
         return;
     }
 
-    let eye = eye_material.eye_material();
-    let iris = eye_material.iris_material();
+    let (eye, iris) = eye_material.get_materials();
 
     if talking_timer.tick(time.delta()).just_finished() {
         eye.base_color = Color::BLACK;

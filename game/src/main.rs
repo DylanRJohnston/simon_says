@@ -1,7 +1,6 @@
 use bevy::asset::AssetMetaCheck;
 use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::prelude::*;
-use bevy::render::camera::ScalingMode;
 use bevy_firework::plugin::ParticleSystemPlugin;
 use bevy_tweening::TweeningPlugin;
 use game::assets::AssetsPlugin;
