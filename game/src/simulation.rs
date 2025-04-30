@@ -188,11 +188,11 @@ mod test {
         pub steps: usize,
     }
 
-    fn action_iter(action_list: &[Action]) -> impl Iterator<Item = Action> + Clone + '_ {
+    fn action_iter(action_list: &[Action]) -> impl Iterator<Item = Action> + Clone {
         action_list.into_iter().copied()
     }
 
-    fn solution_iter(level: &Level) -> impl Iterator<Item = Vec<Action>> + '_ {
+    fn solution_iter(level: &Level) -> impl Iterator<Item = Vec<Action>> {
         (1..=level.action_limit).flat_map(move |depth| {
             (1..=depth)
                 .map(|_| action_iter(&level.actions))
@@ -989,7 +989,9 @@ mod test {
         assert_eq!(
             slowest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Forward, Right, Forward, Right, Right, Backward, Forward,],
+                path: vec![
+                    Left, Forward, Right, Forward, Right, Right, Backward, Forward,
+                ],
                 solution_size: 8,
                 steps: 23,
             },]
@@ -1413,17 +1415,23 @@ mod test {
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Forward, Left, Right, Backward, Right, Forward,],
+                    path: vec![
+                        Forward, Right, Forward, Left, Right, Backward, Right, Forward,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Forward, Left, Right, Backward, Backward, Right,],
+                    path: vec![
+                        Forward, Right, Forward, Left, Right, Backward, Backward, Right,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Forward, Left, Backward, Right, Left, Forward,],
+                    path: vec![
+                        Forward, Right, Forward, Left, Backward, Right, Left, Forward,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
@@ -1433,7 +1441,9 @@ mod test {
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Left, Forward, Forward, Left, Backward, Right,],
+                    path: vec![
+                        Forward, Right, Left, Forward, Forward, Left, Backward, Right,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
@@ -1443,32 +1453,44 @@ mod test {
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Left, Forward, Left, Backward, Right, Forward,],
+                    path: vec![
+                        Forward, Right, Left, Forward, Left, Backward, Right, Forward,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Left, Forward, Left, Backward, Backward, Right,],
+                    path: vec![
+                        Forward, Right, Left, Forward, Left, Backward, Backward, Right,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Left, Backward, Right, Forward, Left, Forward,],
+                    path: vec![
+                        Forward, Right, Left, Backward, Right, Forward, Left, Forward,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Left, Backward, Right, Backward, Right, Forward,],
+                    path: vec![
+                        Forward, Right, Left, Backward, Right, Backward, Right, Forward,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Left, Backward, Right, Backward, Backward, Right,],
+                    path: vec![
+                        Forward, Right, Left, Backward, Right, Backward, Backward, Right,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
                 Solution {
-                    path: vec![Forward, Right, Left, Backward, Backward, Right, Left, Forward,],
+                    path: vec![
+                        Forward, Right, Left, Backward, Backward, Right, Left, Forward,
+                    ],
                     solution_size: 8,
                     steps: 18,
                 },
@@ -2007,7 +2029,9 @@ mod test {
         assert_eq!(
             fastest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Forward, Backward, Backward, Forward, Right, Backward, Right],
+                path: vec![
+                    Left, Forward, Backward, Backward, Forward, Right, Backward, Right
+                ],
                 solution_size: 8,
                 steps: 8
             }]
@@ -2016,7 +2040,9 @@ mod test {
         assert_eq!(
             slowest_solutions(&solutions),
             vec![Solution {
-                path: vec![Left, Right, Backward, Forward, Backward, Forward, Right, Backward],
+                path: vec![
+                    Left, Right, Backward, Forward, Backward, Forward, Right, Backward
+                ],
                 solution_size: 8,
                 steps: 70
             }]
