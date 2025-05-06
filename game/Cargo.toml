@@ -4,16 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.15", default-features = false }
-bevy-inspector-egui = { version = "0.30", optional = true }
-bevy_asset_loader = "0.22.0"
-bevy_firework = { version = "0.5.0", default-features = false }
-bevy_kira_audio = "0.22.0"
-bevy_pkv = "0.12.0"
-bevy_tweening = "0.12.0"
+bevy = { version = "0.16", default-features = false }
+bevy-inspector-egui = { version = "0.31", optional = true }
+bevy_asset_loader = { git = "https://github.com/NiklasEi/bevy_asset_loader.git", branch = "bevy_main" }
+bevy_firework = { git = "https://github.com/mbrea-c/bevy_firework.git", branch = "update_bevy_016", default-features = false }
+bevy_kira_audio = "0.23.0"
+bevy_pkv = "0.13.0"
+bevy_tweening = "0.13.0"
 bevy_video_glitch = "0.2.0"
 gloo-storage = "0.3.0"
-rand = { version = "0.9.0", default-features = false, features = ["small_rng"] }
+rand = { version = "0.9.0" }
 serde = { version = "1.0.204", features = ["derive"] }
 tracing = "0.1.40"
 
