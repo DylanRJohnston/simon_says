@@ -1,4 +1,4 @@
-use bevy::{prelude::*, ui::FocusPolicy};
+use bevy::{ecs::spawn::SpawnIter, prelude::*, ui::FocusPolicy};
 use challenges::ChallengeState;
 
 use crate::{
@@ -34,25 +34,24 @@ pub enum GameMode {
 }
 
 fn spawn_ui(mut commands: Commands, icons: Res<IconAssets>) {
-    commands
-        .spawn((
-            Name::new("Settings UI Container"),
-            Node {
-                width: Val::Percent(100.),
-                height: Val::Percent(100.),
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::FlexEnd,
-                align_items: AlignItems::Start,
-                padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
-                ..default()
-            },
-        ))
-        .with_children(|container| {
+    commands.spawn((
+        Name::new("Settings UI Container"),
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::FlexEnd,
+            align_items: AlignItems::Start,
+            padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
+            ..default()
+        },
+        children![
             button::Button::builder()
                 .on_click(|commands| commands.trigger(CreateSettingsUI))
                 .icon(icons.bars.clone())
-                .build(container);
-        });
+                .build()
+        ],
+    ));
 }
 
 #[derive(Debug, Event)]
@@ -64,6 +63,101 @@ pub struct DestroySettingsUI;
 #[derive(Debug, Component)]
 pub struct SettingsUIRoot;
 
+#[derive(Debug, Component, Clone, Copy)]
+pub struct LevelCard(usize);
+
+const INCOMPLETE_COLOR: Color = Color::srgb_u8(0x41, 0x53, 0x69);
+const SUCCESS_COLOR: Color = Color::srgba_u8(0x0c, 0xc4, 0x0f, 0xdd);
+
+fn create_settings_ui(
+    _trigger: Trigger<CreateSettingsUI>,
+    mut commands: Commands,
+    game_mode: Res<GameMode>,
+    icons: Res<IconAssets>,
+    challenges: ResMut<ChallengeState>,
+    level_counter: Res<LevelCounter>,
+    master_volume: Res<MasterVolume>,
+    mut game_state: ResMut<NextState<GameState>>,
+) {
+    game_state.set(GameState::Paused);
+
+    commands.spawn((
+        Name::new("Settings UI Root"),
+        SettingsUIRoot,
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Percent(100.),
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.6)),
+        Interaction::default(),
+        children![settings_panel(
+            *game_mode,
+            &*master_volume,
+            &*icons,
+            &*challenges,
+            **level_counter
+        )],
+    ));
+}
+
+fn settings_panel(
+    game_mode: GameMode,
+    master_volume: &MasterVolume,
+    icons: &IconAssets,
+    challenges: &ChallengeState,
+    level_counter: usize,
+) -> impl Bundle {
+    (
+        Name::new("Settings Panel"),
+        Node {
+            flex_direction: FlexDirection::Column,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Start,
+            padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
+            row_gap: Val::Px(UI_CONTAINER_GAP),
+            ..default()
+        },
+        BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
+        BackgroundColor(Color::srgba_u8(0x56, 0x6c, 0x86, 0xff)),
+        FocusPolicy::Block,
+        children![
+            header(game_mode, master_volume, icons),
+            game_mode_explanation(game_mode),
+            horizontal_line(),
+            level_grid(challenges, level_counter),
+        ],
+    )
+}
+
+fn header(game_mode: GameMode, master_volume: &MasterVolume, icons: &IconAssets) -> impl Bundle {
+    (
+        Name::new("Header Section"),
+        Node {
+            width: Val::Percent(100.),
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::SpaceBetween,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        children![
+            game_mode_controls(game_mode),
+            (
+                Name::new("Control Buttons"),
+                Node {
+                    column_gap: Val::Px(UI_CONTAINER_GAP),
+                    ..default()
+                },
+                children![volume_button(master_volume, icons), reset_button()],
+            )
+        ],
+    )
+}
+
 #[derive(Debug, Component)]
 pub struct StoryButton;
 
@@ -73,275 +167,189 @@ pub struct GameModeExplanation;
 #[derive(Debug, Component)]
 pub struct ChallengeButton;
 
-#[derive(Debug, Component, Clone, Copy)]
-pub struct LevelCard(usize);
+fn game_mode_controls(game_mode: GameMode) -> impl Bundle {
+    (
+        Name::new("Game Mode Controls"),
+        Node {
+            column_gap: Val::Px(UI_CONTAINER_GAP),
+            ..default()
+        },
+        children![
+            (
+                Name::new("Game Mode Label"),
+                Text("Game Mode:".into()),
+                TextColor(PRIMARY_TEXT_COLOR),
+                TextFont {
+                    font_size: 45.,
+                    ..default()
+                },
+            ),
+            (StoryButton, {
+                let mut button = button::Button::builder()
+                    .on_click(|commands| commands.insert_resource(GameMode::Story))
+                    .text("Story".into());
 
-fn create_settings_ui(
-    _trigger: Trigger<CreateSettingsUI>,
-    mut commands: Commands,
-    game_mode: Res<GameMode>,
-    icons: Res<IconAssets>,
-    mut challenges: ResMut<ChallengeState>,
-    level_counter: Res<LevelCounter>,
-    master_volume: Res<MasterVolume>,
-    mut game_state: ResMut<NextState<GameState>>,
-) {
-    game_state.set(GameState::Paused);
+                if game_mode == GameMode::Story {
+                    button = button.border_color(PRIMARY_TEXT_COLOR);
+                }
+                button.build()
+            }),
+            (ChallengeButton, {
+                let mut button = button::Button::builder()
+                    .on_click(|commands| commands.insert_resource(GameMode::Challenge))
+                    .text("Challenge".into());
 
-    commands
-        .spawn((
-            Name::new("Settings UI Root"),
-            SettingsUIRoot,
-            Node {
-                width: Val::Percent(100.),
-                height: Val::Percent(100.),
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
-                ..default()
-            },
-            BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.6)),
-            Interaction::default(),
-        ))
-        .with_children(|container| {
-            container
-                .spawn((
-                    Name::new("Settings Panel"),
-                    Node {
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Start,
-                        padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
-                        row_gap: Val::Px(UI_CONTAINER_GAP),
-                        ..default()
-                    },
-                    BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-                    BackgroundColor(Color::srgba_u8(0x56, 0x6c, 0x86, 0xff)),
-                    FocusPolicy::Block,
-                ))
-                .with_children(|container| {
-                    // Header section with game mode and controls
-                    container
-                        .spawn((
-                            Name::new("Header Section"),
-                            Node {
-                                width: Val::Percent(100.),
-                                flex_direction: FlexDirection::Row,
-                                justify_content: JustifyContent::SpaceBetween,
-                                align_items: AlignItems::Center,
-                                ..default()
-                            },
-                        ))
-                        .with_children(|container| {
-                            // Game mode controls
-                            container
-                                .spawn((
-                                    Name::new("Game Mode Controls"),
-                                    Node {
-                                        column_gap: Val::Px(UI_CONTAINER_GAP),
-                                        ..default()
-                                    },
-                                ))
-                                .with_children(|container| {
-                                    container.spawn((
-                                        Name::new("Game Mode Label"),
-                                        Text("Game Mode:".into()),
-                                        TextColor(*PRIMARY_TEXT_COLOR),
-                                        TextFont {
-                                            font_size: 45.,
-                                            ..default()
-                                        },
-                                    ));
+                if game_mode == GameMode::Challenge {
+                    button = button.border_color(PRIMARY_TEXT_COLOR);
+                };
 
-                                    let mut story = button::Button::builder()
-                                        .on_click(|commands| {
-                                            commands.insert_resource(GameMode::Story)
-                                        })
-                                        .text("Story".into());
+                button.build()
+            })
+        ],
+    )
+}
 
-                                    if *game_mode == GameMode::Story {
-                                        story = story.border_color(*PRIMARY_TEXT_COLOR);
-                                    }
+fn volume_button(master_volume: &MasterVolume, icons: &IconAssets) -> impl Bundle {
+    (
+        VolumeButton,
+        button::Button::builder()
+            .on_click(|commands| commands.trigger(ToggleVolume))
+            .icon(match *master_volume {
+                MasterVolume::Muted => icons.mute.clone(),
+                MasterVolume::Unmuted => icons.unmute.clone(),
+            })
+            .size(24.)
+            .build(),
+    )
+}
 
-                                    story.build(container).insert(StoryButton);
+fn reset_button() -> impl Bundle {
+    button::Button::builder()
+        .background_color(BUTTON_CANCEL_COLOR)
+        .on_click(|commands| {
+            commands.trigger(ResetChallengeState);
+            commands.trigger(DestroySettingsUI);
+            commands.trigger(DespawnLevel);
+            commands.trigger(DespawnPlayer);
+            commands.trigger(PlayChangeLevelMusic);
+            commands.delayed(2., move |commands| commands.trigger(level::LoadLevel(0)));
+        })
+        .text("Reset".into())
+        .build()
+}
 
-                                    let mut challenge = button::Button::builder()
-                                        .on_click(|commands| {
-                                            commands.insert_resource(GameMode::Challenge)
-                                        })
-                                        .text("Challenge".into());
+fn game_mode_explanation(game_mode: GameMode) -> impl Bundle {
+    (
+        Name::new("Game Mode Explanation"),
+        GameModeExplanation,
+        Text(
+            match game_mode {
+                GameMode::Story => "Levels progress with any solution",
+                GameMode::Challenge => "Levels only progress once all challenges are completed",
+            }
+            .into(),
+        ),
+        TextColor(PRIMARY_TEXT_COLOR),
+        TextFont {
+            font_size: 16.,
+            ..default()
+        },
+    )
+}
 
-                                    if *game_mode == GameMode::Challenge {
-                                        challenge = challenge.border_color(*PRIMARY_TEXT_COLOR);
-                                    }
+fn level_grid(challenges: &ChallengeState, level_counter: usize) -> impl Bundle {
+    (
+        Name::new("Level Grid"),
+        Node {
+            display: Display::Grid,
+            grid_template_columns: vec![RepeatedGridTrack::fr(6, 1.)],
+            grid_auto_rows: vec![GridTrack::fr(1.)],
+            row_gap: Val::Px(UI_CONTAINER_GAP),
+            column_gap: Val::Px(UI_CONTAINER_GAP),
+            ..default()
+        },
+        Children::spawn(SpawnIter(
+            SCENES
+                .iter()
+                .enumerate()
+                .filter_map(|(index, scene)| match scene {
+                    crate::level::Scene::Level(level) => Some((index, level)),
+                    _ => None,
+                })
+                .map(|(index, level)| {
+                    let challenge = challenges.get(level.name).copied().unwrap_or_default();
 
-                                    challenge.build(container).insert(ChallengeButton);
-                                });
+                    level_card(index, index == level_counter, level.name, challenge)
+                })
+                // Need to allocate an intermediate vector to avoid borrowing &ChallengeState
+                // SpawnIter requires Iterator<_>: 'static
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )),
+    )
+}
 
-                            // Control buttons
-                            container
-                                .spawn((
-                                    Name::new("Control Buttons"),
-                                    Node {
-                                        column_gap: Val::Px(UI_CONTAINER_GAP),
-                                        ..default()
-                                    },
-                                ))
-                                .with_children(|container| {
-                                    button::Button::builder()
-                                        .on_click(|commands| commands.trigger(ToggleVolume))
-                                        .icon(match *master_volume {
-                                            MasterVolume::Muted => icons.mute.clone(),
-                                            MasterVolume::Unmuted => icons.unmute.clone(),
-                                        })
-                                        .size(24.)
-                                        .build(container)
-                                        .insert(VolumeButton);
+fn level_card(
+    index: usize,
+    selected: bool,
+    name: &str,
+    challenge: challenges::ChallengeRecord,
+) -> impl Bundle {
+    (
+        Name::new(format!("Level Card {}", index)),
+        LevelCard(index),
+        Interaction::default(),
+        Node {
+            justify_content: JustifyContent::FlexStart,
+            align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,
+            padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING / 2.)),
+            row_gap: Val::Px(UI_CONTAINER_GAP * 2.),
+            border: UiRect::all(Val::Px(4.)),
+            ..default()
+        },
+        BorderColor(match selected {
+            true => PRIMARY_TEXT_COLOR,
+            false => Color::NONE,
+        }),
+        BackgroundColor(match challenge.level_completed {
+            true => SUCCESS_COLOR,
+            false => INCOMPLETE_COLOR,
+        }),
+        BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS * 2.0)),
+        children![
+            Text(name.into()),
+            (
+                Node {
+                    column_gap: Val::Px(UI_CONTAINER_GAP),
+                    ..default()
+                },
+                Children::spawn(SpawnIter(
+                    vec![challenge.steps, challenge.commands, challenge.waste,]
+                        .into_iter()
+                        .filter_map(|completed| { Some(challenge_tracker(completed?)) }),
+                )),
+            )
+        ],
+    )
+}
 
-                                    button::Button::builder()
-                                        .background_color(*BUTTON_CANCEL_COLOR)
-                                        .on_click(|commands| {
-                                            commands.trigger(ResetChallengeState);
-                                            commands.trigger(DestroySettingsUI);
-                                            commands.trigger(DespawnLevel);
-                                            commands.trigger(DespawnPlayer);
-                                            commands.trigger(PlayChangeLevelMusic);
-                                            commands.delayed(2., move |commands| {
-                                                commands.trigger(level::LoadLevel(0))
-                                            });
-                                        })
-                                        .text("Reset".into())
-                                        .build(container);
-                                });
-                        });
-
-                    // Game mode explanation
-                    container.spawn((
-                        Name::new("Game Mode Explanation"),
-                        GameModeExplanation,
-                        Text(
-                            if *game_mode == GameMode::Story {
-                                "Levels progress with any solution"
-                            } else {
-                                "Levels only progress once all challenges are completed"
-                            }
-                            .into(),
-                        ),
-                        TextColor(*PRIMARY_TEXT_COLOR),
-                        TextFont {
-                            font_size: 16.,
-                            ..default()
-                        },
-                    ));
-
-                    // Horizontal line
-                    container.spawn((Name::new("Divider"), horizontal_line()));
-
-                    // Level grid
-                    container
-                        .spawn((
-                            Name::new("Level Grid"),
-                            Node {
-                                display: Display::Grid,
-                                grid_template_columns: vec![RepeatedGridTrack::fr(6, 1.)],
-                                grid_auto_rows: vec![GridTrack::fr(1.)],
-                                row_gap: Val::Px(UI_CONTAINER_GAP),
-                                column_gap: Val::Px(UI_CONTAINER_GAP),
-                                ..default()
-                            },
-                        ))
-                        .with_children(|container| {
-                            let success_color = Color::srgba_u8(0x0c, 0xc4, 0x0f, 0xdd);
-                            let incomplete_color = Color::srgb_u8(0x41, 0x53, 0x69);
-
-                            for (index, level) in
-                                SCENES
-                                    .iter()
-                                    .enumerate()
-                                    .filter_map(|(index, scene)| match scene {
-                                        crate::level::Scene::Level(level) => Some((index, level)),
-                                        _ => None,
-                                    })
-                            {
-                                let challenge =
-                                    challenges.entry(level.name.to_string()).or_default();
-
-                                container
-                                    .spawn((
-                                        Name::new(format!("Level Card {}", index)),
-                                        LevelCard(index),
-                                        Interaction::default(),
-                                        Node {
-                                            justify_content: JustifyContent::FlexStart,
-                                            align_items: AlignItems::Center,
-                                            flex_direction: FlexDirection::Column,
-                                            padding: UiRect::all(Val::Px(
-                                                UI_CONTAINER_PADDING / 2.,
-                                            )),
-                                            row_gap: Val::Px(UI_CONTAINER_GAP * 2.),
-                                            border: UiRect::all(Val::Px(4.)),
-                                            ..default()
-                                        },
-                                        BorderColor(if index == **level_counter {
-                                            (*PRIMARY_TEXT_COLOR).into()
-                                        } else {
-                                            BorderColor::DEFAULT.0
-                                        }),
-                                        BackgroundColor(if challenge.level_completed {
-                                            success_color
-                                        } else {
-                                            incomplete_color
-                                        }),
-                                        BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS * 2.0)),
-                                    ))
-                                    .with_children(|container| {
-                                        container.spawn(Text(level.name.into()));
-
-                                        container
-                                            .spawn(Node {
-                                                column_gap: Val::Px(UI_CONTAINER_GAP),
-                                                ..default()
-                                            })
-                                            .with_children(|container| {
-                                                let mut spawn_challenge_tracker =
-                                                    |completed: bool| {
-                                                        container.spawn((
-                                                            Node {
-                                                                width: Val::Px(24.),
-                                                                height: Val::Px(24.),
-                                                                border: UiRect::all(Val::Px(2.)),
-                                                                ..default()
-                                                            },
-                                                            BorderRadius::all(Val::Px(
-                                                                BUTTON_BORDER_RADIUS,
-                                                            )),
-                                                            BorderColor(*PRIMARY_TEXT_COLOR),
-                                                            BackgroundColor(if completed {
-                                                                (*PRIMARY_TEXT_COLOR).into()
-                                                            } else {
-                                                                incomplete_color.into()
-                                                            }),
-                                                        ));
-                                                    };
-
-                                                if let Some(completed) = challenge.steps {
-                                                    spawn_challenge_tracker(completed);
-                                                }
-
-                                                if let Some(completed) = challenge.commands {
-                                                    spawn_challenge_tracker(completed);
-                                                }
-
-                                                if let Some(completed) = challenge.waste {
-                                                    spawn_challenge_tracker(completed);
-                                                }
-                                            });
-                                    });
-                            }
-                        });
-                });
-        });
+fn challenge_tracker(completed: bool) -> impl Bundle {
+    (
+        Node {
+            width: Val::Px(24.),
+            height: Val::Px(24.),
+            border: UiRect::all(Val::Px(2.)),
+            ..default()
+        },
+        BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
+        BorderColor(PRIMARY_TEXT_COLOR),
+        BackgroundColor(if completed {
+            PRIMARY_TEXT_COLOR
+        } else {
+            INCOMPLETE_COLOR
+        }),
+    )
 }
 
 fn update_settings_ui_state(
@@ -359,7 +367,7 @@ fn update_settings_ui_state(
 
     for mut button in &mut story_buttons {
         button.border_color = if *game_mode == GameMode::Story {
-            Some(*PRIMARY_TEXT_COLOR)
+            Some(PRIMARY_TEXT_COLOR)
         } else {
             None
         };
@@ -367,7 +375,7 @@ fn update_settings_ui_state(
 
     for mut button in &mut challenge_buttons {
         button.border_color = if *game_mode == GameMode::Challenge {
-            Some(*PRIMARY_TEXT_COLOR)
+            Some(PRIMARY_TEXT_COLOR)
         } else {
             None
         };
@@ -389,7 +397,7 @@ fn destroy_settings_ui(
 ) {
     state.set(GameState::InGame);
     for root in &roots {
-        commands.entity(root).despawn_recursive();
+        commands.entity(root).despawn();
     }
 }
 
@@ -414,7 +422,7 @@ fn level_card_interactions(
         let level_id = level.0;
 
         if level_id == **level_counter {
-            *border_color = BorderColor(*PRIMARY_TEXT_COLOR);
+            *border_color = BorderColor(PRIMARY_TEXT_COLOR);
             continue;
         }
 
@@ -432,7 +440,7 @@ fn level_card_interactions(
                 }
                 other => tracing::warn!(?other, "attempted to select non-level scene"),
             },
-            Interaction::Hovered => *border_color = BorderColor(*PRIMARY_TEXT_COLOR),
+            Interaction::Hovered => *border_color = BorderColor(PRIMARY_TEXT_COLOR),
             Interaction::None => *border_color = BorderColor::default(),
         }
     }

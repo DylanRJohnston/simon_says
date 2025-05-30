@@ -168,9 +168,9 @@ pub fn run_simulation_step(
 
 #[cfg(test)]
 mod test {
-    use std::{cmp::Ordering, rc::Rc};
+    use std::cmp::Ordering;
 
-    use bevy::utils::HashSet;
+    use bevy_platform::collections::HashSet;
 
     use itertools::Itertools;
 

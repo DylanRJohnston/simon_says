@@ -43,7 +43,7 @@ fn run_delayed_commands(
         };
 
         (delayed_command)(&mut commands);
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn();
     }
 }
 

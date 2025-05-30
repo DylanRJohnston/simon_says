@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy_tweening::{component_animator_system, Animator, Lens, Tween};
+use bevy_tweening::{Animator, Lens, Tween, component_animator_system};
 use bevy_video_glitch::VideoGlitchSettings;
 
 use crate::{delayed_command::DelayedCommandExt, game_state::GameState, player::Death};
@@ -39,15 +39,15 @@ fn video_glitch(
     mut commands: Commands,
     video_glitch: Query<Entity, With<VideoGlitchSettings>>,
     mut prev_state: Local<GameState>,
-) {
+) -> Result {
     if !state.is_changed() {
-        return;
+        return Ok(());
     }
 
     match (*prev_state, state.get()) {
         (GameState::Paused, GameState::MainMenu | GameState::InGame) => {
             commands
-                .entity(video_glitch.single())
+                .entity(video_glitch.single()?)
                 .insert(Animator::new(Tween::new(
                     EaseFunction::QuadraticInOut,
                     Duration::from_secs_f32(1.),
@@ -59,7 +59,7 @@ fn video_glitch(
         }
         (GameState::MainMenu | GameState::InGame, GameState::Paused) => {
             commands
-                .entity(video_glitch.single())
+                .entity(video_glitch.single()?)
                 .insert(Animator::new(Tween::new(
                     EaseFunction::QuadraticInOut,
                     Duration::from_secs_f32(1.),
@@ -73,14 +73,16 @@ fn video_glitch(
     }
 
     *prev_state = *state.get();
+
+    Ok(())
 }
 
 fn player_death(
     _trigger: Trigger<Death>,
     mut commands: Commands,
     camera: Query<Entity, With<Camera>>,
-) {
-    let entity = camera.single();
+) -> Result {
+    let entity = camera.single()?;
 
     commands.delayed(1.0, move |commands| {
         let tween = Tween::new(
@@ -102,4 +104,6 @@ fn player_death(
 
         commands.entity(entity).insert(Animator::new(tween));
     });
+
+    Ok(())
 }

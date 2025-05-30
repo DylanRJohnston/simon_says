@@ -1,11 +1,7 @@
 use std::f32::consts::PI;
 
-use bevy::{
-    color::palettes::css::{GREEN, LIMEGREEN, ORANGE, PINK, PURPLE, RED, SKY_BLUE},
-    ecs::system::SystemParam,
-    prelude::*,
-};
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use bevy::{ecs::system::SystemParam, prelude::*};
+use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use crate::{
     assets::TextureAssets, game_state::GameState, player::Player, ui::dialogue::DialogueStarted,
@@ -183,22 +179,19 @@ fn spawn_eye(
         // let transform =
         //     Vec3::new(x, y, z) + (Vec3::new(x, y, z) - camera.translation).normalize() * 5.0;
 
-        commands
-            .spawn((
-                Name::from("Eye"),
-                Eye::default(),
-                Emotion::focused(&mut SmallRng::seed_from_u64(12398712837183)),
+        commands.spawn((
+            Name::from("Eye"),
+            Eye::default(),
+            Emotion::focused(&mut SmallRng::seed_from_u64(12398712837183)),
+            Mesh3d(quad_handle.clone()),
+            MeshMaterial3d(eye_material.clone()),
+            Transform::from_xyz(x, y, z),
+            children![(
+                Iris,
                 Mesh3d(quad_handle.clone()),
-                MeshMaterial3d(eye_material.clone()),
-                Transform::from_xyz(x, y, z),
-            ))
-            .with_children(|iris| {
-                iris.spawn((
-                    Iris,
-                    Mesh3d(quad_handle.clone()),
-                    MeshMaterial3d(iris_material.clone()),
-                ));
-            });
+                MeshMaterial3d(iris_material.clone()),
+            )],
+        ));
     }
 }
 
@@ -310,17 +303,10 @@ fn eye_emotion(
         .iter()
         .next()
         .map(|it| it.translation)
-        .unwrap_or_else(|| {
-            camera
-                .get_single()
-                .map(|it| it.translation)
-                .unwrap_or(Vec3::ZERO)
-        });
-
-    let camera_position = camera
-        .get_single()
-        .map(|it| it.translation)
+        .or_else(|| Some(camera.single().ok()?.translation))
         .unwrap_or_default();
+
+    let camera_position = camera.single().map(|it| it.translation).unwrap_or_default();
 
     for (mut eye, mut emotion) in &mut eye {
         match emotion.as_mut() {
@@ -394,9 +380,9 @@ fn animate_emotion(
     mut eyes: Query<(&mut Transform, &Children, &Emotion), With<Eye>>,
     mut iris: Query<&mut Transform, (With<Iris>, Without<Eye>)>,
     time: Res<Time>,
-) {
+) -> Result {
     for (mut eye, children, emotion) in &mut eyes {
-        let mut iris = iris.get_mut(children[0]).unwrap();
+        let mut iris = iris.get_mut(children[0])?;
 
         eye.scale.y = eye.scale.y.lerp(
             emotion.target_scale(),
@@ -409,6 +395,8 @@ fn animate_emotion(
             time.delta_secs() * emotion.emotion_speed(),
         );
     }
+
+    Ok(())
 }
 
 #[derive(Debug, Resource, Deref, DerefMut)]

@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::spawn::SpawnWith, prelude::*};
 
 use crate::{
     actions::{ActionPlan, RemoveAction},
@@ -26,8 +26,8 @@ impl Plugin for ActionListPlugin {
 pub struct ActionPlanUI;
 
 impl ActionListPlugin {
-    pub fn spawn_ui(parent: &mut ChildBuilder) {
-        parent.spawn((
+    pub fn spawn_ui() -> impl Bundle {
+        (
             ActionPlanUI,
             Node {
                 // width: Val::Px(350.),
@@ -39,8 +39,8 @@ impl ActionListPlugin {
                 ..default()
             },
             BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-            BackgroundColor((*UI_BACKGROUND_COLOR).into()),
-        ));
+            BackgroundColor(UI_BACKGROUND_COLOR),
+        )
     }
 }
 
@@ -78,25 +78,24 @@ fn update_action_list(
         return;
     }
 
-    let ui = query.get_single().unwrap();
+    let ui = query.single().unwrap();
     commands
         .entity(ui)
-        .despawn_descendants()
-        .with_children(|parent| {
-            parent.spawn((
+        .despawn_related::<Children>()
+        .insert(children![
+            (
                 Text("Simon Says".into()),
                 Node {
                     align_self: AlignSelf::FlexStart,
                     ..default()
                 },
-                TextColor(*PRIMARY_TEXT_COLOR),
+                TextColor(PRIMARY_TEXT_COLOR),
                 TextFont {
                     font_size: 45.,
                     ..default()
                 },
-            ));
-
-            parent.spawn((
+            ),
+            (
                 Node {
                     align_self: AlignSelf::FlexStart,
                     ..default()
@@ -111,27 +110,31 @@ fn update_action_list(
                         "".into()
                     }
                 )),
-                TextColor(*PRIMARY_TEXT_COLOR),
+                TextColor(PRIMARY_TEXT_COLOR),
                 TextFont {
                     font_size: 20.,
                     ..default()
                 },
-            ));
-
-            parent.spawn(horizontal_line());
-
+            ),
+            horizontal_line(),
+        ])
+        .with_children(|parent| {
             if action_plan.is_empty() {
-                parent.spawn((Text("No Commands".into()), TextColor(*GHOST_TEXT_COLOR)));
+                parent.spawn((Text("No Commands".into()), TextColor(GHOST_TEXT_COLOR)));
             }
 
             for (index, action) in action_plan.iter().enumerate() {
                 let prevent_interactions = simulation_state.get() != &SimulationState::Stopped;
 
-                let background_color = if program_counter.0 == index && prevent_interactions {
-                    (*GHOST_TEXT_COLOR).into()
-                } else {
-                    BackgroundColor::default()
+                let background_color = match program_counter.0 == index && prevent_interactions {
+                    true => GHOST_TEXT_COLOR,
+                    false => Color::NONE,
                 };
+
+                let up = icons.up.clone();
+                let down = icons.down.clone();
+
+                let is_last = index == action_plan.len() - 1;
 
                 parent
                     .spawn((
@@ -144,85 +147,89 @@ fn update_action_list(
                             ..default()
                         },
                         BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
-                        background_color,
+                        BackgroundColor(background_color),
+                        children![
+                            (
+                                Node {
+                                    width: Val::Px(24.),
+                                    height: Val::Px(24.),
+                                    ..default()
+                                },
+                                Children::spawn(SpawnWith(
+                                    move |re_arrange_box: &mut ChildSpawner| {
+                                        if prevent_interactions {
+                                            return;
+                                        }
+
+                                        let up_disabled = index == 0;
+                                        re_arrange_box.spawn((
+                                            Button,
+                                            Node {
+                                                width: Val::Px(24.),
+                                                height: Val::Px(24.),
+                                                top: Val::Px(-8.),
+                                                position_type: PositionType::Absolute,
+                                                ..default()
+                                            },
+                                            ImageNode::new(up).with_color(if up_disabled {
+                                                GHOST_ATTENUATION_COLOR
+                                            } else {
+                                                Color::WHITE
+                                            }),
+                                            ReorderButton {
+                                                button_type: ButtonType::Up,
+                                                disabled: up_disabled,
+                                                index,
+                                            },
+                                        ));
+
+                                        let down_disabled = is_last;
+                                        re_arrange_box.spawn((
+                                            Button,
+                                            Node {
+                                                width: Val::Px(24.),
+                                                height: Val::Px(24.),
+                                                bottom: Val::Px(-8.),
+                                                position_type: PositionType::Absolute,
+                                                ..default()
+                                            },
+                                            ImageNode::new(down).with_color(if down_disabled {
+                                                GHOST_ATTENUATION_COLOR
+                                            } else {
+                                                Color::WHITE
+                                            }),
+                                            ReorderButton {
+                                                button_type: ButtonType::Down,
+                                                disabled: down_disabled,
+                                                index,
+                                            },
+                                        ));
+                                    }
+                                ))
+                            ),
+                            (
+                                Text((*action).into()),
+                                Node {
+                                    flex_grow: 1.,
+                                    ..default()
+                                },
+                            )
+                        ],
                     ))
                     .with_children(|row| {
-                        row.spawn((Node {
-                            width: Val::Px(24.),
-                            height: Val::Px(24.),
-                            ..default()
-                        },))
-                            .with_children(|re_arrange_box| {
-                                if prevent_interactions {
-                                    return;
-                                }
-
-                                let up_disabled = index == 0;
-                                re_arrange_box.spawn((
-                                    Button,
-                                    Node {
-                                        width: Val::Px(24.),
-                                        height: Val::Px(24.),
-                                        top: Val::Px(-8.),
-                                        position_type: PositionType::Absolute,
-                                        ..default()
-                                    },
-                                    ImageNode::new(icons.up.clone()).with_color(if up_disabled {
-                                        *GHOST_ATTENUATION_COLOR
-                                    } else {
-                                        Color::WHITE
-                                    }),
-                                    ReorderButton {
-                                        button_type: ButtonType::Up,
-                                        disabled: up_disabled,
-                                        index,
-                                    },
-                                ));
-
-                                let down_disabled = index == (action_plan.len() - 1);
-                                re_arrange_box.spawn((
-                                    Button,
-                                    Node {
-                                        width: Val::Px(24.),
-                                        height: Val::Px(24.),
-                                        bottom: Val::Px(-8.),
-                                        position_type: PositionType::Absolute,
-                                        ..default()
-                                    },
-                                    ImageNode::new(icons.down.clone()).with_color(
-                                        if down_disabled {
-                                            *GHOST_ATTENUATION_COLOR
-                                        } else {
-                                            Color::WHITE
-                                        },
-                                    ),
-                                    ReorderButton {
-                                        button_type: ButtonType::Down,
-                                        disabled: down_disabled,
-                                        index,
-                                    },
-                                ));
-                            });
-
-                        row.spawn((
-                            Text((*action).into()),
-                            Node {
-                                flex_grow: 1.,
-                                ..default()
-                            },
-                        ));
-
                         if prevent_interactions {
                             return;
                         }
 
-                        button::Button::builder()
-                            .icon(icons.remove.clone())
-                            .on_click(move |commands| commands.trigger(RemoveAction(index)))
-                            .background_color(*UI_BACKGROUND_COLOR)
-                            .border_color(*UI_BACKGROUND_COLOR)
-                            .hover_background_color(*BUTTON_CANCEL_COLOR)
-                            .build(row);
+                        row.spawn(
+                            button::Button::builder()
+                                .icon(icons.remove.clone())
+                                .on_click(move |commands| commands.trigger(RemoveAction(index)))
+                                .background_color(UI_BACKGROUND_COLOR)
+                                .border_color(UI_BACKGROUND_COLOR)
+                                .hover_background_color(BUTTON_CANCEL_COLOR)
+                                .build(),
+                        );
                     });
             }
         });
@@ -242,7 +249,7 @@ fn reorder_button(
                 image.color = Color::WHITE;
             }
             Interaction::Hovered => {
-                image.color = *BUTTON_COLOR;
+                image.color = BUTTON_COLOR;
             }
             Interaction::Pressed => match button.button_type {
                 ButtonType::Up => {

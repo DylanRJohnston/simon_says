@@ -20,8 +20,8 @@ impl Plugin for ActionMenuPlugin {
 pub struct ActionMenuUI;
 
 impl ActionMenuPlugin {
-    pub fn spawn_ui(container: &mut ChildBuilder) {
-        container.spawn((
+    pub fn ui() -> impl Bundle {
+        (
             Name::new("Command Menu UI"),
             ActionMenuUI,
             Node {
@@ -30,8 +30,8 @@ impl ActionMenuPlugin {
                 ..default()
             },
             BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
-            BackgroundColor((*UI_BACKGROUND_COLOR).into()),
-        ));
+            BackgroundColor(UI_BACKGROUND_COLOR),
+        )
     }
 }
 
@@ -42,19 +42,19 @@ fn update_available_actions(
     mut commands: Commands,
     level: Res<Level>,
     action_menu: Query<Entity, With<ActionMenuUI>>,
-) {
+) -> Result {
     if !level.is_changed() {
-        return;
+        return Ok(());
     }
 
-    let ui = action_menu.get_single().unwrap();
+    let ui = action_menu.single()?;
     commands
         .entity(ui)
-        .despawn_descendants()
+        .despawn_related::<Children>()
         .with_children(|header| {
             header.spawn((
                 Text("Available Commands".into()),
-                TextColor(*PRIMARY_TEXT_COLOR),
+                TextColor(PRIMARY_TEXT_COLOR),
                 TextFont {
                     font_size: 45.,
                     ..default()
@@ -71,14 +71,18 @@ fn update_available_actions(
                     for action in &level.actions {
                         let action = *action;
 
-                        button::Button::builder()
-                            .text(action.into())
-                            .on_click(move |commands| commands.trigger(AddAction(action)))
-                            .build(action_row)
-                            .insert(ActionButton);
+                        action_row.spawn((
+                            ActionButton,
+                            button::Button::builder()
+                                .text(action.into())
+                                .on_click(move |commands| commands.trigger(AddAction(action)))
+                                .build(),
+                        ));
                     }
                 });
         });
+
+    Ok(())
 }
 
 fn plan_is_full(

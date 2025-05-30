@@ -1,8 +1,10 @@
 use bevy::{
-    ecs::system::{EntityCommands, SystemParam},
+    ecs::{
+        spawn::SpawnIter,
+        system::{EntityCommands, SystemParam},
+    },
     math::Affine2,
     prelude::*,
-    utils::HashMap,
 };
 use bevy_firework::{
     bevy_utilitarian::prelude::{RandF32, RandValue, RandVec3},
@@ -10,11 +12,12 @@ use bevy_firework::{
     curve::{FireworkCurve, FireworkGradient},
     emission_shape::EmissionShape,
 };
+use bevy_platform::collections::hash_map::HashMap;
 use bevy_tweening::{
-    asset_animator_system, lens::TransformPositionLens, Animator, AssetAnimator, EaseMethod, Lens,
-    RepeatCount, Tween,
+    Animator, AssetAnimator, EaseMethod, Lens, RepeatCount, Tween, asset_animator_system,
+    lens::TransformPositionLens,
 };
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::SmallRng};
 use std::{f32::consts::PI, sync::LazyLock, time::Duration};
 
 use crate::{
@@ -22,6 +25,7 @@ use crate::{
     assets::TextureAssets,
     delayed_command::{DelayedCommand, DelayedCommandExt},
     game_state::GameState,
+    maybe::MaybeBundleExt,
     player::{LevelCompleted, SpawnPlayer},
     ui::{challenges::ChallengeState, constants::BUTTON_SUCCESS_COLOR, settings::GameMode},
 };
@@ -875,12 +879,7 @@ fn transform(
     iter: impl IntoIterator<Item = ((i32, i32), Tile)>,
 ) -> impl IntoIterator<Item = ((i32, i32), Tile)> {
     iter.into_iter()
-        .map(|((x, y), tile)| {
-            (
-                (x * rot.0 .0 + y * rot.0 .1, x * rot.1 .0 + y * rot.1 .1),
-                tile,
-            )
-        })
+        .map(|((x, y), tile)| ((x * rot.0.0 + y * rot.0.1, x * rot.1.0 + y * rot.1.1), tile))
         .collect::<Vec<_>>()
 }
 
@@ -957,16 +956,13 @@ fn create_textures(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     textures: Res<TextureAssets>,
-) {
-    let tile_handle = meshes.add(
-        Mesh::from(Cuboid::new(0.95, 0.95, 0.95))
-            .with_generated_tangents()
-            .unwrap(),
-    );
+) -> Result {
+    let tile_handle =
+        meshes.add(Mesh::from(Cuboid::new(0.95, 0.95, 0.95)).with_generated_tangents()?);
     commands.insert_resource(TileMesh(tile_handle));
 
     let basic = materials.add(Color::srgb_u8(0x3b, 0x5d, 0xc9));
-    let finish = materials.add(*BUTTON_SUCCESS_COLOR);
+    let finish = materials.add(BUTTON_SUCCESS_COLOR);
     let wall = materials.add(Color::srgb_u8(0x56, 0x6c, 0x86));
     let ice = materials.add(StandardMaterial {
         base_color: Color::srgb_u8(0x73, 0xef, 0xf7),
@@ -1001,6 +997,8 @@ fn create_textures(
         cw_rot,
         ccw_rot,
     });
+
+    Ok(())
 }
 
 fn setup(mut commands: Commands) {
@@ -1072,6 +1070,12 @@ fn setup(mut commands: Commands) {
 #[derive(Component)]
 pub struct LevelRoot;
 
+#[derive(Bundle)]
+pub struct Example<A: Component, B: Component> {
+    a: A,
+    b: B,
+}
+
 fn spawn_level(
     mut commands: Commands,
     level: Res<Level>,
@@ -1113,68 +1117,63 @@ fn spawn_level(
         .with_repeat_count(RepeatCount::Infinite),
     ));
 
-    commands
-        .spawn((LevelRoot, Visibility::Inherited, Transform::IDENTITY))
-        .with_children(|root| {
-            for ((x, y), tile) in &level.tiles {
-                let position = match tile {
-                    Tile::Wall => Vec3::new(*x as f32, 0.2, *y as f32),
-                    _ => Vec3::new(*x as f32, 0.0, *y as f32),
-                };
+    commands.spawn((
+        LevelRoot,
+        Visibility::Inherited,
+        Transform::IDENTITY,
+        Children::spawn(SpawnIter(
+            level
+                .tiles
+                .iter()
+                .map(|(&(x, y), &tile)| {
+                    let position = match tile {
+                        Tile::Wall => Vec3::new(x as f32, 0.2, y as f32),
+                        _ => Vec3::new(x as f32, 0.0, y as f32),
+                    };
 
-                let mut entity = root.spawn((
-                    Name::from(format!("{tile:?}")),
-                    *tile,
-                    Mesh3d(tile_mesh.clone()),
-                    MeshMaterial3d(match tile {
-                        Tile::Basic | Tile::Start(_) => tile_material.basic.clone(),
-                        Tile::Wall => tile_material.wall.clone(),
-                        Tile::Finish => tile_material.finish.clone(),
-                        Tile::Ice => tile_material.ice.clone(),
-                        Tile::CWRot => tile_material.cw_rot.clone(),
-                        Tile::CCWRot => tile_material.ccw_rot.clone(),
-                    }),
-                    Transform {
-                        translation: position - Vec3::Y * 20.0,
-                        rotation: match tile {
-                            // Tile::Ice => Quat::from_rotation_y(
-                            //     rand::thread_rng().gen_range(0..4) as f32
-                            //         * std::f32::consts::FRAC_PI_2,
-                            // ),
-                            _ => Quat::from_rotation_y(std::f32::consts::PI),
+                    (
+                        Name::from(format!("{tile:?}")),
+                        tile,
+                        Mesh3d(tile_mesh.clone()),
+                        MeshMaterial3d(match tile {
+                            Tile::Basic | Tile::Start(_) => tile_material.basic.clone(),
+                            Tile::Wall => tile_material.wall.clone(),
+                            Tile::Finish => tile_material.finish.clone(),
+                            Tile::Ice => tile_material.ice.clone(),
+                            Tile::CWRot => tile_material.cw_rot.clone(),
+                            Tile::CCWRot => tile_material.ccw_rot.clone(),
+                        }),
+                        Transform {
+                            translation: position - Vec3::Y * 20.0,
+                            rotation: Quat::from_rotation_y(std::f32::consts::PI),
+                            scale: match tile {
+                                Tile::Wall => Vec3::ONE + Vec3::Y * 0.4,
+                                _ => Vec3::ONE,
+                            },
                         },
-                        scale: match tile {
-                            Tile::Wall => Vec3::ONE + Vec3::Y * 0.4,
-                            _ => Vec3::ONE,
-                        },
-                    },
-                    Animator::new(Tween::new(
-                        EaseFunction::QuadraticOut,
-                        Duration::from_secs_f32(1. + rand.random::<f32>()),
-                        TransformPositionLens {
-                            start: position - Vec3::Y * 10.0,
-                            end: position,
-                        },
-                    )),
-                ));
-
-                if let Tile::CWRot = tile {
-                    if let Some(animator) = cw_rot_animator.take() {
-                        entity.insert(animator);
-                    }
-                }
-
-                if let Tile::CCWRot = tile {
-                    if let Some(animator) = ccw_rot_animator.take() {
-                        entity.insert(animator);
-                    }
-                }
-
-                if matches!(tile, Tile::Start(_)) {
-                    entity.insert(Start);
-                }
-            }
-        });
+                        Animator::new(Tween::new(
+                            EaseFunction::QuadraticOut,
+                            Duration::from_secs_f32(1. + rand.random::<f32>()),
+                            TransformPositionLens {
+                                start: position - Vec3::Y * 10.0,
+                                end: position,
+                            },
+                        )),
+                        matches!(tile, Tile::Start(_)).then(|| Start).into_bundle(),
+                        matches!(tile, Tile::CWRot)
+                            .then(|| cw_rot_animator.take())
+                            .flatten()
+                            .into_bundle(),
+                        matches!(tile, Tile::CCWRot)
+                            .then(|| ccw_rot_animator.take())
+                            .flatten()
+                            .into_bundle(),
+                    )
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )),
+    ));
 
     commands.trigger(SpawnPlayer);
 }
@@ -1219,7 +1218,8 @@ fn despawn_level(
         commands.spawn(DelayedCommand::new(2., move |commands| {
             commands
                 .get_entity(level_root)
-                .map(EntityCommands::despawn_recursive);
+                .as_mut()
+                .map(EntityCommands::despawn);
         }));
     }
 }

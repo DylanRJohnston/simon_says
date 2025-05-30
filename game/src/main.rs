@@ -1,4 +1,4 @@
-use bevy::asset::AssetMetaCheck;
+use bevy::asset::{AssetMetaCheck, load_internal_binary_asset};
 use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::prelude::*;
 use bevy_firework::plugin::ParticleSystemPlugin;
@@ -50,17 +50,24 @@ fn main() {
     .insert_resource(AmbientLight {
         brightness: 80.0,
         color: Color::WHITE,
+        ..Default::default()
     })
     .add_systems(Startup, setup);
 
     #[cfg(feature = "debug")]
     app.add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new());
 
+    load_internal_binary_asset!(
+        app,
+        TextFont::default().font,
+        // "../assets/fonts/Neuropol X Rg.otf",
+        "../assets/fonts/LEMONMILK-Regular.otf",
+        |bytes: &[u8], _path: String| { Font::try_from_bytes(bytes.to_vec()).unwrap() }
+    );
+
     app.run();
 }
 
-/// set up a simple 3D scene
-/// set up a simple 3D scene
 fn setup(mut commands: Commands) {
     // light
     commands.spawn((

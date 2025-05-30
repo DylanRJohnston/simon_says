@@ -9,6 +9,7 @@ pub mod delayed_command;
 pub mod eyes;
 pub mod game_state;
 pub mod level;
+pub mod maybe;
 pub mod music;
 pub mod player;
 pub mod simulation;

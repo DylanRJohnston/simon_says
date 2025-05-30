@@ -155,28 +155,19 @@ pub struct RemoveAction(pub usize);
 pub struct ActionPlan(pub Vec<Action>);
 
 impl ActionPlan {
-    pub fn phase_iter(&self) -> impl Iterator<Item = Vec<Action>> {
-        let actions = self.clone().0;
-
-        (1..=actions.len()).map(move |i| {
-            let mut phase = actions.clone();
+    pub fn phase_iter(&self) -> impl Iterator<Item = ActionPlan> {
+        (1..=self.len()).map(|i| {
+            let mut phase = self.clone();
             phase.rotate_right(i);
             phase
         })
     }
 
     pub fn canonicalize_phase(&self) -> Self {
-        Self(
-            self.phase_iter()
-                .map(|plan| {
-                    ActionPlan(plan)
-                        .canonicalize_rotation()
-                        .canonicalize_mirror()
-                        .0
-                })
-                .min()
-                .unwrap(),
-        )
+        self.phase_iter()
+            .map(|plan| plan.canonicalize_rotation().canonicalize_mirror())
+            .min()
+            .unwrap()
     }
 
     pub fn mirror(&self) -> Self {
@@ -194,11 +185,7 @@ impl ActionPlan {
     pub fn canonicalize_mirror(&self) -> Self {
         let mirror = self.mirror();
 
-        if self < &mirror {
-            self.clone()
-        } else {
-            mirror
-        }
+        if self < &mirror { self.clone() } else { mirror }
     }
 
     pub fn canonicalize_rotation(&self) -> Self {

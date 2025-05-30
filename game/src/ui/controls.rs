@@ -23,22 +23,29 @@ pub struct PlayButton;
 pub struct ResetButton;
 
 impl ControlsPlugin {
-    pub fn spawn_controls(container: &mut ChildBuilder) {
-        button::Button::builder()
-            .text("Clear".into())
-            .background_color(*BUTTON_CANCEL_COLOR)
-            .on_click(|commands| commands.trigger(ResetActionPlan))
-            .disabled()
-            .build(container)
-            .insert((ResetButton, Name::from("Reset Button")));
+    pub fn clear_button() -> impl Bundle {
+        (
+            button::Button::builder()
+                .text("Clear".into())
+                .background_color(BUTTON_CANCEL_COLOR)
+                .on_click(|commands| commands.trigger(ResetActionPlan))
+                .disabled()
+                .build(),
+            ResetButton,
+            Name::from("Reset Button"),
+        )
+    }
 
-        button::Button::builder()
-            .text("Start".into())
-            .background_color(*BUTTON_SUCCESS_COLOR)
-            .on_click(|commands| commands.trigger(SimulationStart))
-            .disabled()
-            .build(container)
-            .insert(PlayButton);
+    pub fn start_button() -> impl Bundle {
+        (
+            button::Button::builder()
+                .text("Start".into())
+                .background_color(BUTTON_SUCCESS_COLOR)
+                .on_click(|commands| commands.trigger(SimulationStart))
+                .disabled()
+                .build(),
+            PlayButton,
+        )
     }
 }
 

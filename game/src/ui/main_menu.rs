@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::delayed_command::DelayedCommand;
+use crate::delayed_command::{DelayedCommand, DelayedCommandExt};
 
 use super::*;
 
@@ -31,36 +31,34 @@ fn setup(mut commands: Commands) {
 struct SpawnMainMenu;
 
 fn spawn_main_menu(_trigger: Trigger<SpawnMainMenu>, mut commands: Commands) {
-    commands.spawn(DelayedCommand::new(0.5, |commands| {
-        commands
-            .spawn((
-                Name::new("Main Menu Root"),
-                MainMenuRoot,
-                Node {
-                    height: Val::Percent(100.0),
-                    width: Val::Percent(100.0),
-                    justify_content: JustifyContent::Center,
-                    column_gap: Val::Px(UI_CONTAINER_GAP),
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-            ))
-            .with_children(|container| {
+    commands.delayed(0.5, |commands| {
+        commands.spawn((
+            Name::new("Main Menu Root"),
+            MainMenuRoot,
+            Node {
+                height: Val::Percent(100.0),
+                width: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                column_gap: Val::Px(UI_CONTAINER_GAP),
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            children![
                 button::Button::builder()
                     .text("Begin Cycle No. 4,815,162,342".into())
                     .on_click(|commands| commands.trigger(StartGame))
-                    .build(container);
-
+                    .build(),
                 button::Button::builder()
                     .text("Disobey".into())
-                    .background_color(*BUTTON_CANCEL_COLOR)
+                    .background_color(BUTTON_CANCEL_COLOR)
                     .on_click(|commands| {
                         commands.trigger(RemoveUI);
                         commands.trigger(Refuse);
                     })
-                    .build(container);
-            });
-    }));
+                    .build()
+            ],
+        ));
+    });
 }
 
 fn destroy(mut commands: Commands) {
@@ -85,7 +83,7 @@ fn remove_ui(
     query: Query<Entity, With<MainMenuRoot>>,
 ) {
     for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn();
     }
 }
 

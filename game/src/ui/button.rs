@@ -1,8 +1,8 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::{ecs::spawn::SpawnWith, prelude::*};
 
 use super::{
-    constants::{BUTTON_BORDER_THICKNESS, BUTTON_COLOR, PRIMARY_TEXT_COLOR},
     BUTTON_BORDER_RADIUS, GHOST_TEXT_COLOR, UI_BACKGROUND_COLOR,
+    constants::{BUTTON_BORDER_THICKNESS, BUTTON_COLOR, PRIMARY_TEXT_COLOR},
 };
 
 pub struct ButtonPlugin;
@@ -80,13 +80,12 @@ impl ButtonBuilder {
         self
     }
 
-    pub fn build<'a>(self, parent: &'a mut ChildBuilder) -> EntityCommands<'a> {
+    pub fn build(self) -> impl Bundle {
         if self.on_click.is_none() {
             panic!("Button must have an on_click callback.");
         }
 
-        let mut commands = parent.spawn((
-            Name::from("Button"),
+        return (
             Button {
                 on_click: self.on_click.unwrap(),
                 background_color: self.background_color,
@@ -99,39 +98,39 @@ impl ButtonBuilder {
             Node {
                 padding: UiRect::all(Val::Px(8.0)),
                 border: UiRect::all(Val::Px(BUTTON_BORDER_THICKNESS)),
+                align_items: AlignItems::Center,
                 ..default()
             },
             BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
-            BackgroundColor(self.background_color.unwrap_or(*BUTTON_COLOR).into()),
+            BackgroundColor(self.background_color.unwrap_or(BUTTON_COLOR).into()),
             BorderColor(
                 self.border_color
-                    .unwrap_or(self.background_color.unwrap_or(*BUTTON_COLOR))
+                    .unwrap_or(self.background_color.unwrap_or(BUTTON_COLOR))
                     .into(),
             ),
             Interaction::default(),
-        ));
+            Children::spawn(SpawnWith(move |spawn: &mut ChildSpawner| {
+                if let Some(text) = self.text {
+                    spawn.spawn((
+                        Text(text.into()),
+                        TextColor(self.text_color.unwrap_or(PRIMARY_TEXT_COLOR)),
+                    ));
+                }
 
-        commands.with_children(|command_container| {
-            if let Some(text) = self.text {
-                command_container.spawn((
-                    Text(text.into()),
-                    TextColor(self.text_color.unwrap_or(*PRIMARY_TEXT_COLOR)),
-                ));
-            }
-            if let Some(icon) = self.icon {
-                let size = self.size.unwrap_or(20.);
+                if let Some(icon) = self.icon {
+                    let size = self.size.unwrap_or(20.);
 
-                command_container.spawn((
-                    Node {
-                        width: Val::Px(size),
-                        height: Val::Px(size),
-                        ..default()
-                    },
-                    ImageNode::new(icon),
-                ));
-            }
-        });
-        commands
+                    spawn.spawn((
+                        Node {
+                            width: Val::Px(size),
+                            height: Val::Px(size),
+                            ..default()
+                        },
+                        ImageNode::new(icon),
+                    ));
+                }
+            })),
+        );
     }
 }
 
@@ -170,8 +169,8 @@ fn button_interaction(
 ) {
     for (interaction, button, mut border_color, mut background_color) in &mut actions {
         if button.disabled {
-            *border_color = BorderColor::from(*UI_BACKGROUND_COLOR);
-            *background_color = BackgroundColor::from(*UI_BACKGROUND_COLOR);
+            *border_color = BorderColor::from(UI_BACKGROUND_COLOR);
+            *background_color = BackgroundColor::from(UI_BACKGROUND_COLOR);
 
             continue;
         }
@@ -180,12 +179,12 @@ fn button_interaction(
             Interaction::Pressed => {
                 *border_color = button
                     .hover_border_color
-                    .unwrap_or(*PRIMARY_TEXT_COLOR)
+                    .unwrap_or(PRIMARY_TEXT_COLOR)
                     .into();
 
                 *background_color = button
                     .hover_border_color
-                    .unwrap_or(*PRIMARY_TEXT_COLOR)
+                    .unwrap_or(PRIMARY_TEXT_COLOR)
                     .into();
 
                 (button.on_click)(&mut commands);
@@ -193,20 +192,20 @@ fn button_interaction(
             Interaction::Hovered => {
                 *border_color = button
                     .hover_border_color
-                    .unwrap_or(*PRIMARY_TEXT_COLOR)
+                    .unwrap_or(PRIMARY_TEXT_COLOR)
                     .into();
 
                 *background_color = button
                     .hover_background_color
-                    .unwrap_or(button.background_color.unwrap_or(*BUTTON_COLOR))
+                    .unwrap_or(button.background_color.unwrap_or(BUTTON_COLOR))
                     .into();
             }
             Interaction::None => {
                 *border_color = button
                     .border_color
-                    .unwrap_or(button.background_color.unwrap_or(*BUTTON_COLOR))
+                    .unwrap_or(button.background_color.unwrap_or(BUTTON_COLOR))
                     .into();
-                *background_color = button.background_color.unwrap_or(*BUTTON_COLOR).into();
+                *background_color = button.background_color.unwrap_or(BUTTON_COLOR).into();
             }
         }
     }
@@ -219,23 +218,23 @@ fn update_style(
     for (mut border_color, mut background_color, button, children) in &mut query {
         if let Ok(mut color) = text_colour.get_mut(children[0]) {
             **color = if !button.disabled {
-                button.text_color.unwrap_or(*PRIMARY_TEXT_COLOR)
+                button.text_color.unwrap_or(PRIMARY_TEXT_COLOR)
             } else {
-                *GHOST_TEXT_COLOR
+                GHOST_TEXT_COLOR
             };
         }
 
         if button.disabled {
-            *border_color = BorderColor::from(*UI_BACKGROUND_COLOR);
-            *background_color = BackgroundColor::from(*UI_BACKGROUND_COLOR);
+            *border_color = BorderColor::from(UI_BACKGROUND_COLOR);
+            *background_color = BackgroundColor::from(UI_BACKGROUND_COLOR);
 
             continue;
         }
 
-        *background_color = button.background_color.unwrap_or(*BUTTON_COLOR).into();
+        *background_color = button.background_color.unwrap_or(BUTTON_COLOR).into();
         *border_color = button
             .border_color
-            .unwrap_or(button.background_color.unwrap_or(*BUTTON_COLOR))
+            .unwrap_or(button.background_color.unwrap_or(BUTTON_COLOR))
             .into();
     }
 }

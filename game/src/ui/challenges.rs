@@ -1,4 +1,5 @@
-use bevy::{ecs::system::SystemParam, prelude::*, utils::HashMap};
+use bevy::{ecs::system::SystemParam, prelude::*};
+use bevy_platform::collections::hash_map::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -29,8 +30,8 @@ impl Plugin for ChallengePlugin {
 pub struct ChallengeRoot;
 
 impl ChallengePlugin {
-    pub fn spawn_ui(container: &mut ChildBuilder) {
-        container.spawn((
+    pub fn spawn_ui() -> impl Bundle {
+        (
             Node {
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Start,
@@ -39,7 +40,7 @@ impl ChallengePlugin {
                 ..default()
             },
             ChallengeRoot,
-        ));
+        )
     }
 }
 
@@ -167,8 +168,8 @@ fn update_challenge_ui(
     let challenge = challenge.get_record_mut().cloned().unwrap_or_default();
 
     commands
-        .entity(query.get_single().unwrap())
-        .despawn_descendants()
+        .entity(query.single().unwrap())
+        .despawn_related::<Children>()
         .with_children(|container| {
             let success_color = Color::srgba_u8(0x0c, 0xc4, 0x0f, 0xdd);
 
@@ -191,7 +192,7 @@ fn update_challenge_ui(
                         } else {
                             Color::default()
                         }),
-                        BackgroundColor((*UI_BACKGROUND_COLOR).into()),
+                        BackgroundColor(UI_BACKGROUND_COLOR),
                     ))
                     .with_children(|container| {
                         container.spawn((
@@ -202,20 +203,20 @@ fn update_challenge_ui(
                                 ..default()
                             },
                             BorderRadius::all(Val::Px(BUTTON_BORDER_RADIUS)),
-                            BorderColor((*PRIMARY_TEXT_COLOR).into()),
+                            BorderColor(PRIMARY_TEXT_COLOR),
                             BackgroundColor(if completed {
-                                success_color.into()
+                                success_color
                             } else {
-                                Color::default().into()
+                                Color::NONE
                             }),
                         ));
 
                         container.spawn((
                             Text(text.into()),
                             TextColor(if completed {
-                                *GHOST_TEXT_COLOR
+                                GHOST_TEXT_COLOR
                             } else {
-                                *PRIMARY_TEXT_COLOR
+                                PRIMARY_TEXT_COLOR
                             }),
                         ));
                     });

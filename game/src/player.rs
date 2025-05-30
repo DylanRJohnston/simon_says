@@ -3,10 +3,10 @@ use std::time::Duration;
 use bevy::{prelude::*, render::view::NoFrustumCulling};
 use bevy_kira_audio::{AudioChannel, AudioControl};
 use bevy_tweening::{
-    lens::{TransformPositionLens, TransformRotationLens},
     Animator, Sequence, Tracks, Tween, Tweenable,
+    lens::{TransformPositionLens, TransformRotationLens},
 };
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use crate::{
     actions::{Action, CWRotation},
@@ -15,7 +15,7 @@ use crate::{
     game_state::GameState,
     level::{Level, Tile},
     music::EffectChannel,
-    simulation::{run_simulation_step, SimulationEvent, SimulationPause, SimulationStop},
+    simulation::{SimulationEvent, SimulationPause, SimulationStop, run_simulation_step},
 };
 
 pub struct PlayerPlugin;
@@ -52,14 +52,14 @@ fn pre_instance_player_mesh(mut commands: Commands, player_mesh: Res<ModelAssets
 fn has_uncullable_parent(
     entity: Entity,
     root_query: &Query<Entity, With<Uncullable>>,
-    parent_query: &Query<&Parent>,
+    child_of: &Query<&ChildOf>,
 ) -> bool {
     if root_query.get(entity).is_ok() {
         return true;
     }
 
-    if let Ok(parent) = parent_query.get(entity) {
-        if has_uncullable_parent(parent.get(), root_query, parent_query) {
+    if let Ok(parent) = child_of.get(entity) {
+        if has_uncullable_parent(parent.parent(), root_query, child_of) {
             return true;
         }
     }
@@ -70,7 +70,7 @@ fn has_uncullable_parent(
 fn uncullable_mesh(
     mut commands: Commands,
     mesh: Query<Entity, Added<Mesh3d>>,
-    parents: Query<&Parent>,
+    parents: Query<&ChildOf>,
     root_query: Query<Entity, With<Uncullable>>,
 ) {
     for mesh in &mesh {
@@ -122,7 +122,7 @@ pub fn spawn_player(
     mut commands: Commands,
 ) {
     for player in &players {
-        commands.entity(player).despawn_recursive();
+        commands.entity(player).despawn();
     }
 
     level
@@ -171,9 +171,9 @@ fn animate_player_movement(
     players: Query<&Transform>,
     mut commands: Commands,
 ) {
-    let entity = trigger.entity();
-    let player = trigger.event().player;
-    let action = trigger.event().action;
+    let entity = trigger.target();
+    let player = trigger.player;
+    let action = trigger.action;
     let model = players.get(entity).unwrap();
 
     let transform: Box<dyn Tweenable<Transform>> = Box::new(Tween::new(
@@ -295,7 +295,7 @@ fn play_player_death_sound(
 }
 
 fn player_death(trigger: Trigger<Death>, mut commands: Commands, query: Query<&Player>) {
-    let entity = trigger.entity();
+    let entity = trigger.target();
     let player = *query.get(entity).unwrap();
 
     commands.trigger(SimulationPause);

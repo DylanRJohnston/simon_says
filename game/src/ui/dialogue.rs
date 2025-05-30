@@ -5,16 +5,14 @@ use bevy_kira_audio::prelude::*;
 
 use crate::{
     assets::SoundAssets,
-    delayed_command::DelayedCommand,
+    delayed_command::DelayedCommandExt,
     game_state::GameState,
     level::LoadNextLevel,
     music::{DialogueChannel, MasterVolume, SuppressMusicVolume},
 };
 
 use super::{
-    constants::{PRIMARY_TEXT_COLOR, UI_BACKGROUND_COLOR},
-    main_menu::Refuse,
-    UI_CONTAINER_PADDING, UI_CONTAINER_RADIUS,
+    UI_CONTAINER_PADDING, UI_CONTAINER_RADIUS, constants::UI_BACKGROUND_COLOR, main_menu::Refuse,
 };
 
 pub struct DialoguePlugin;
@@ -140,7 +138,7 @@ fn play_dialogue_segment(
                         padding: UiRect::all(Val::Px(UI_CONTAINER_PADDING)),
                         ..default()
                     },
-                    BackgroundColor((*UI_BACKGROUND_COLOR).into()),
+                    BackgroundColor(UI_BACKGROUND_COLOR),
                     BorderRadius::all(Val::Px(UI_CONTAINER_RADIUS)),
                 ))
                 .with_children(|container| {
@@ -155,9 +153,9 @@ fn play_dialogue_segment(
         })
         .id();
 
-    commands.spawn(DelayedCommand::new(5., move |commands| {
-        commands.entity(id).despawn_recursive();
-    }));
+    commands.delayed(5., move |commands| {
+        commands.entity(id).despawn();
+    });
 
     *count += 1;
 }
