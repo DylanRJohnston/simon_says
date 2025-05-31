@@ -1,5 +1,4 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
-use bevy_platform::collections::hash_map::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -53,7 +52,7 @@ pub struct ChallengeRecord {
 }
 
 #[derive(Debug, Clone, Resource, Deref, DerefMut, Serialize, Deserialize)]
-pub struct ChallengeState(HashMap<String, ChallengeRecord>);
+pub struct ChallengeState(std::collections::HashMap<String, ChallengeRecord>);
 
 impl Default for ChallengeState {
     fn default() -> Self {

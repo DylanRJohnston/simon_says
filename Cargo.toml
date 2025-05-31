@@ -10,4 +10,6 @@ opt-level = 3
 
 [patch.crates-io]
 bevy_firework = { git = "https://github.com/DylanRJohnston/bevy_firework" }
-bevy_video_glitch = { git = "https://github.com/DylanRJohnston/bevy_video_glitch" }
+bevy_video_glitch = { path = "../../github/bevy_video_glitch" }
+getrandom = { git = "https://github.com/rust-random/getrandom" }
+# bevy = { git = "https://github.com/bevyengine/bevy", branch = "release-0.16.1" }

@@ -6,7 +6,6 @@ use bevy_tweening::{
     Animator, Sequence, Tracks, Tween, Tweenable,
     lens::{TransformPositionLens, TransformRotationLens},
 };
-use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use crate::{
     actions::{Action, CWRotation},
@@ -284,14 +283,11 @@ fn play_player_death_sound(
     _trigger: Trigger<PlayPlayerDeathSound>,
     sounds: Res<SoundAssets>,
     effect_channel: Res<AudioChannel<EffectChannel>>,
-    mut rand: Local<Option<SmallRng>>,
 ) {
-    let rand = rand.get_or_insert_with(|| SmallRng::seed_from_u64(0));
-
     effect_channel
         .play(sounds.death_glitch.clone())
         .with_volume(0.2)
-        .with_playback_rate(0.8 + rand.random::<f64>() * 0.4);
+        .with_playback_rate(0.8 + rand::random::<f64>() * 0.4);
 }
 
 fn player_death(trigger: Trigger<Death>, mut commands: Commands, query: Query<&Player>) {
@@ -331,16 +327,18 @@ fn despawn_player(
         let player = *player;
 
         commands.spawn(DelayedCommand::new(0.3, move |commands| {
-            commands.get_entity(entity).map(|mut commands| {
-                commands.insert(Animator::new(Tween::new(
-                    EaseFunction::QuadraticIn,
-                    Duration::from_secs_f32(1.0),
-                    TransformPositionLens {
-                        start: Vec3::from(player),
-                        end: Vec3::from(player) + Vec3::Y * 10.,
-                    },
-                )));
-            });
+            let Ok(mut entity) = commands.get_entity(entity) else {
+                return;
+            };
+
+            entity.insert(Animator::new(Tween::new(
+                EaseFunction::QuadraticIn,
+                Duration::from_secs_f32(1.0),
+                TransformPositionLens {
+                    start: Vec3::from(player),
+                    end: Vec3::from(player) + Vec3::Y * 10.,
+                },
+            )));
         }));
     }
 }

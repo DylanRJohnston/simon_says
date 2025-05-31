@@ -1,7 +1,6 @@
 use std::f32::consts::PI;
 
-use bevy::{ecs::system::SystemParam, prelude::*};
-use rand::{Rng, SeedableRng, rngs::SmallRng};
+use bevy::{ecs::system::SystemParam, log, prelude::*};
 
 use crate::{
     assets::TextureAssets, game_state::GameState, player::Player, ui::dialogue::DialogueStarted,
@@ -9,13 +8,9 @@ use crate::{
 
 pub struct EyesPlugin;
 
-#[derive(Debug, Resource, Deref, DerefMut)]
-struct EyesRandom(SmallRng);
-
 impl Plugin for EyesPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(EyesRandom(SmallRng::seed_from_u64(12398712837183)))
-            .add_systems(OnExit(GameState::Loading), spawn_eye)
+        app.add_systems(OnExit(GameState::Loading), spawn_eye)
             .add_systems(Update, eye_track_player)
             .add_systems(Update, animate_eye_direction)
             .add_systems(Update, eye_emotion)
@@ -55,24 +50,24 @@ const FOCUSED_LOWER_BOUND: f32 = 2.5;
 const FOCUSED_UPPER_BOUND: f32 = 5.0;
 
 impl Emotion {
-    fn neutral(rand: &mut SmallRng) -> Self {
+    fn neutral() -> Self {
         Self::Neutral(Timer::from_seconds(
-            random_range(rand, NEUTRAL_LOWER_BOUND, NEUTRAL_UPPER_BOUND),
+            random_range(NEUTRAL_LOWER_BOUND, NEUTRAL_UPPER_BOUND),
             TimerMode::Once,
         ))
     }
 
-    fn boredom(rand: &mut SmallRng) -> Self {
+    fn boredom() -> Self {
         Self::Bored(Timer::from_seconds(
-            random_range(rand, BOREDOM_LOWER_BOUND, BOREDOM_UPPER_BOUND),
+            random_range(BOREDOM_LOWER_BOUND, BOREDOM_UPPER_BOUND),
             TimerMode::Once,
         ))
     }
 
-    fn focused(rand: &mut SmallRng) -> Self {
+    fn focused() -> Self {
         Self::Focused {
             timer: Timer::from_seconds(
-                random_range(rand, FOCUSED_LOWER_BOUND, FOCUSED_UPPER_BOUND),
+                random_range(FOCUSED_LOWER_BOUND, FOCUSED_UPPER_BOUND),
                 TimerMode::Once,
             ),
             target: FocusTarget::Player,
@@ -154,6 +149,8 @@ fn spawn_eye(
     mut meshes: ResMut<Assets<Mesh>>,
     mut material: ResMut<Assets<StandardMaterial>>,
 ) {
+    log::info!("Spawning eye");
+
     let quad_handle = meshes.add(Rectangle::new(8., 8.));
 
     let eye_material = material.add(StandardMaterial {
@@ -182,7 +179,7 @@ fn spawn_eye(
         commands.spawn((
             Name::from("Eye"),
             Eye::default(),
-            Emotion::focused(&mut SmallRng::seed_from_u64(12398712837183)),
+            Emotion::focused(),
             Mesh3d(quad_handle.clone()),
             MeshMaterial3d(eye_material.clone()),
             Transform::from_xyz(x, y, z),
@@ -276,17 +273,17 @@ fn animate_eye_direction(
     }
 }
 
-fn random_range(rand: &mut SmallRng, lower: f32, upper: f32) -> f32 {
-    lower + rand.random::<f32>() * (upper - lower)
+fn random_range(lower: f32, upper: f32) -> f32 {
+    lower + rand::random::<f32>() * (upper - lower)
 }
 
-fn random_boredom_target(rand: &mut SmallRng, position: Vec3, wander: f32) -> Vec3 {
+fn random_boredom_target(position: Vec3, wander: f32) -> Vec3 {
     (position
         + wander
             * Vec3::new(
-                rand.random::<f32>() * 10. - 5.,
-                rand.random::<f32>() * 3. - 1.5,
-                rand.random::<f32>() * 10. - 5.,
+                rand::random::<f32>() * 10. - 5.,
+                rand::random::<f32>() * 3. - 1.5,
+                rand::random::<f32>() * 10. - 5.,
             ))
     .clamp(Vec3::new(-8., -2., -8.), Vec3::new(8., 3., 8.))
 }
@@ -297,7 +294,6 @@ fn eye_emotion(
     camera: Query<&Transform, With<Camera>>,
     time: Res<Time>,
     mut neutral_count: Local<usize>,
-    mut rand: ResMut<EyesRandom>,
 ) {
     let player_position = players
         .iter()
@@ -320,10 +316,10 @@ fn eye_emotion(
                 if *neutral_count >= 3 {
                     *neutral_count = 0;
 
-                    *emotion = Emotion::boredom(&mut rand);
+                    *emotion = Emotion::boredom();
                 } else {
-                    eye.target = random_boredom_target(&mut rand, eye.target, 0.2);
-                    *emotion = Emotion::neutral(&mut rand);
+                    eye.target = random_boredom_target(eye.target, 0.2);
+                    *emotion = Emotion::neutral();
                 }
             }
             Emotion::Bored(timer) => {
@@ -331,15 +327,15 @@ fn eye_emotion(
                     continue;
                 }
 
-                *emotion = Emotion::boredom(&mut rand);
-                eye.target = random_boredom_target(&mut rand, eye.target, 1.);
+                *emotion = Emotion::boredom();
+                eye.target = random_boredom_target(eye.target, 1.);
             }
             Emotion::Surprised(timer) => {
                 if !timer.tick(time.delta()).just_finished() {
                     continue;
                 }
 
-                *emotion = Emotion::focused(&mut rand);
+                *emotion = Emotion::focused();
             }
             Emotion::Focused { timer, target } => {
                 eye.target = match target {
@@ -351,17 +347,13 @@ fn eye_emotion(
                     continue;
                 }
 
-                *emotion = Emotion::neutral(&mut rand);
+                *emotion = Emotion::neutral();
             }
         }
     }
 }
 
-fn emotion_from_player_activity(
-    _trigger: Trigger<PlayerActivity>,
-    mut eye: Query<&mut Emotion>,
-    mut rand: ResMut<EyesRandom>,
-) {
+fn emotion_from_player_activity(_trigger: Trigger<PlayerActivity>, mut eye: Query<&mut Emotion>) {
     for mut emotion in &mut eye {
         match emotion.as_mut() {
             Emotion::Focused { timer, target } => match target {
@@ -370,7 +362,7 @@ fn emotion_from_player_activity(
                 }
                 FocusTarget::Camera => {}
             },
-            Emotion::Bored(_) | Emotion::Neutral(_) => *emotion = Emotion::focused(&mut rand),
+            Emotion::Bored(_) | Emotion::Neutral(_) => *emotion = Emotion::focused(),
             _ => {}
         }
     }
@@ -409,7 +401,6 @@ fn trigger_talking_animation(
     _trigger: Trigger<DialogueStarted>,
     mut commands: Commands,
     mut eye: Query<&mut Emotion>,
-    mut rand: ResMut<EyesRandom>,
 ) {
     commands.insert_resource(TalkingTimer(Timer::from_seconds(3.5, TimerMode::Once)));
     commands.insert_resource(ChangeColorTimer(Timer::from_seconds(0., TimerMode::Once)));
@@ -419,7 +410,7 @@ fn trigger_talking_animation(
                 timer.reset();
                 *target = FocusTarget::Player;
             }
-            Emotion::Bored(_) | Emotion::Neutral(_) => *emotion = Emotion::focused(&mut rand),
+            Emotion::Bored(_) | Emotion::Neutral(_) => *emotion = Emotion::focused(),
             _ => {}
         }
     }
@@ -428,9 +419,8 @@ fn trigger_talking_animation(
 fn animate_talking(
     talking_timer: Option<ResMut<TalkingTimer>>,
     change_color_timer: Option<ResMut<ChangeColorTimer>>,
-    mut eye_material: EyeMaterial,
     time: Res<Time>,
-    mut rand: ResMut<EyesRandom>,
+    mut materials: EyeMaterial,
 ) {
     if talking_timer.is_none() || change_color_timer.is_none() {
         return;
@@ -443,20 +433,18 @@ fn animate_talking(
         return;
     }
 
-    let (eye, iris) = eye_material.get_materials();
+    let (eye_material, iris_material) = materials.get_materials();
 
     if talking_timer.tick(time.delta()).just_finished() {
-        eye.base_color = Color::BLACK;
-        iris.base_color = Color::BLACK;
+        eye_material.base_color = Color::BLACK;
+        iris_material.base_color = Color::BLACK;
+
         return;
     }
 
     if change_color_timer.tick(time.delta()).just_finished() {
-        // eye_material.base_color =
-        //     Color::hsv(talking_timer.remaining_secs() * 360. * 3. % 360., 1.0, 1.0);
-        let color = Color::hsv(rand.random::<f32>() * 360.0, 1.0, 1.0);
-        eye.base_color = color;
-        iris.base_color = Color::hsv(rand.random::<f32>() * 360.0, 1.0, 1.0);
+        eye_material.base_color = Color::hsv(rand::random::<f32>() * 360.0, 1.0, 1.0);
+        iris_material.base_color = Color::hsv(rand::random::<f32>() * 360.0, 1.0, 1.0);
 
         *change_color_timer = ChangeColorTimer(Timer::from_seconds(0.05, TimerMode::Once));
     }
