@@ -13,7 +13,8 @@ Firefox users will experience audio stuttering on startup and at the start of so
 Read more about the puzzle design on my [blog](https://dylanj.xyz/posts/simon-says-cyclic-puzzles/)
 
 ## License
-Code is licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](./LICENSE.md). Please do not redistribute this game.
+
+Code is dual licensed under Apache 2.0 or MIT to be inline with the rest of the Bevy community 
 
 ## Credits
 - Programming & Gameplay Design: Me
